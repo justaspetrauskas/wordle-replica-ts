@@ -25,3 +25,5 @@ dist-ssr
 
 GUIDE.md
 .vercel
+.github/copilot-instructions.md
+.github/agents/*
