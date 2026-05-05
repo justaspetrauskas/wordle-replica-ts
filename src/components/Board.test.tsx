@@ -145,7 +145,7 @@ describe('Board', () => {
         />
       );
       // Lines 2–6 (indices 1–5) have no content yet
-      for (let i = 2; i < MAX_GUESSES; i++) {
+      for (let i = 1; i < MAX_GUESSES; i++) {
         const line = container.querySelectorAll('.line')[i];
         const cells = Array.from(line.querySelectorAll('.cell'));
         cells.forEach((cell) => {

@@ -5,8 +5,6 @@ import { WORD_LENGTH } from '../constants';
 describe('Line', () => {
   describe('always renders WORD_LENGTH cells', () => {
     it('renders 5 cells for a committed guess', () => {
-      render(<Line guess="crane" solution="slate" isCommitted={true} />);
-      // Each cell is a div; query by class
       const { container } = render(<Line guess="crane" solution="slate" isCommitted={true} />);
       expect(container.querySelectorAll('.cell')).toHaveLength(WORD_LENGTH);
     });
