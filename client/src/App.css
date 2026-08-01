@@ -83,6 +83,79 @@
   cursor: not-allowed;
 }
 
+.menu-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-button {
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid #c7cad1;
+  background: #ffffff;
+  color: #1a1a1b;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.menu-button--primary {
+  background: #1a1a1b;
+  border-color: #1a1a1b;
+  color: #ffffff;
+}
+
+.text-button {
+  justify-self: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: #4f5661;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lobby-note {
+  margin: 0;
+  color: #4f5661;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.lobby-label {
+  color: #343942;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lobby-error {
+  margin: 0;
+  color: #b23b3b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.room-code {
+  margin: 0;
+  color: #1a1a1b;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-align: center;
+}
+
+.room-code-input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #c7cad1;
+  border-radius: 8px;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .help-panel {
   width: 100%;
   display: flex;

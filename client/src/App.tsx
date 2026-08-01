@@ -1,78 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import './App.css';
-import type { LanguageCode } from './types/game';
-import { useGameState } from './hooks/useGameState';
-import { GameSetup } from './components/GameSetup';
-import { Board } from './components/Board';
-import { HelpPanel } from './components/HelpPanel';
-import { FlashHint } from './components/FlashHint';
+import type { GameMode } from './types/game';
+import { Home } from './components/Home';
+import { Game } from './components/Game';
+import { MultiplayerLobby } from './components/MultiplayerLobby';
 
 function App() {
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | ''>('');
-  const [hasStarted, setHasStarted] = useState<boolean>(false);
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
 
-  const [message, setMessage] = useState("");
+  const backToHome = useCallback(() => setGameMode(null), []);
 
-  useEffect(() => {
-    fetch("http://localhost:3001/api/hello")
-      .then((response) => response.json())
-      .then((data) => {
-        setMessage(data.message);
-      });
-  }, []);
-
-  const {
-    solution,
-    guesses,
-    currentGuess,
-    currentGuessIndex,
-    gameStatus,
-    helpUsage,
-    flashHint,
-    startNewGame,
-    handleRevealLetterHelp,
-    handleSuggestWordHelp,
-    handleFlashSolutionHelp,
-  } = useGameState(selectedLanguage);
-
-  const handleStartGame = useCallback(() => {
-    if (!selectedLanguage) return;
-    setHasStarted(true);
-    void startNewGame();
-  }, [selectedLanguage, startNewGame]);
-
-  if (!hasStarted) {
-    return (
-      <GameSetup
-        selectedLanguage={selectedLanguage}
-        onSelectLanguage={setSelectedLanguage}
-        onStart={handleStartGame}
-      />
-    );
+  if (gameMode === 'solo') {
+    return <Game onExit={backToHome} />;
   }
 
-  return (
-    <main className="game">
-      <HelpPanel
-        gameStatus={gameStatus}
-        helpUsage={helpUsage}
-        onRevealLetter={handleRevealLetterHelp}
-        onSuggestWord={handleSuggestWordHelp}
-        onFlashSolution={handleFlashSolutionHelp}
-      />
-      <FlashHint hint={flashHint} />
+  if (gameMode === 'multiplayer') {
+    return <MultiplayerLobby onExit={backToHome} />;
+  }
 
-<p>{message}</p>
-
-      <Board
-        guesses={guesses}
-        currentGuess={currentGuess}
-        currentGuessIndex={currentGuessIndex}
-        gameStatus={gameStatus}
-        solution={solution}
-      />
-    </main>
-  );
+  return <Home onSelectMode={setGameMode} />;
 }
 
 export default App;

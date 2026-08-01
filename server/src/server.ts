@@ -1,5 +1,7 @@
 import Fastify from "fastify";
+import { Server } from "socket.io";
 import cors from "@fastify/cors";
+import { setupSocket } from "./socket.js";
 
 
 const app = Fastify({
@@ -25,9 +27,17 @@ app.get("/api/hello", async () => {
 const start = async () => {
   try {
     await app.listen({
-      port: Number(process.env.PORT ?? 3001),
+      port: 3001,
       host: "0.0.0.0",
     });
+
+    const io = new Server(app.server, {
+      cors: {
+        origin: "http://localhost:5174",
+      },
+    });
+
+    setupSocket(io);
   } catch (error) {
     app.log.error(error);
     process.exit(1);

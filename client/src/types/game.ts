@@ -4,6 +4,12 @@ export type GameStatus = 'playing' | 'ended';
 
 export type LanguageCode = 'en' | 'es' | 'da' | 'lt';
 
+export type GameMode = 'solo' | 'multiplayer' | 'ai';
+
+export type LobbyView = 'menu' | 'create' | 'join';
+
+export type RoomStatus = 'idle' | 'pending' | 'waiting' | 'playing';
+
 export interface HelpUsage {
   revealLetter: boolean;
   suggestWord: boolean;
