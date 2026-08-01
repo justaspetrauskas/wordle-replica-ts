@@ -1,68 +1,64 @@
-import { useCallback, useState } from 'react';
-import type { LanguageCode } from '../types/game';
-import { useGameState } from '../hooks/useGameState';
-import { GameSetup } from './GameSetup';
+import type { GameStatus, RoomMode } from '../types/game';
+import { useGame } from '../hooks/useGame';
 import { Board } from './Board';
 import { HelpPanel } from './HelpPanel';
 import { FlashHint } from './FlashHint';
+import { OpponentBoard } from './OpponentBoard';
 
 interface GameProps {
+  roomId: string;
+  mode: RoomMode;
   onExit: () => void;
+  onPlayAgain?: () => void;
 }
 
-export function Game({ onExit }: GameProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | ''>('');
-  const [hasStarted, setHasStarted] = useState<boolean>(false);
-
+export function Game({ roomId, mode, onExit, onPlayAgain }: GameProps) {
   const {
-    solution,
     guesses,
     currentGuess,
-    currentGuessIndex,
-    gameStatus,
+    playerStatus,
+    opponentRows,
     helpUsage,
     flashHint,
-    startNewGame,
-    handleRevealLetterHelp,
-    handleSuggestWordHelp,
-    handleFlashSolutionHelp,
-  } = useGameState(selectedLanguage);
+    message,
+    solution,
+    outcome,
+    requestHint,
+  } = useGame(roomId);
 
-  const handleStartGame = useCallback(() => {
-    if (!selectedLanguage) return;
-    setHasStarted(true);
-    void startNewGame();
-  }, [selectedLanguage, startNewGame]);
+  const gameStatus: GameStatus = playerStatus === 'playing' && !outcome ? 'playing' : 'ended';
 
-  if (!hasStarted) {
-    return (
-      <GameSetup
-        selectedLanguage={selectedLanguage}
-        onSelectLanguage={setSelectedLanguage}
-        onStart={handleStartGame}
-        onBack={onExit}
-      />
-    );
-  }
+  const resultText = outcome === 'won'
+    ? 'You guessed it!'
+    : `Round over — the word was "${solution.toUpperCase()}".`;
 
   return (
     <main className="game">
       <HelpPanel
         gameStatus={gameStatus}
         helpUsage={helpUsage}
-        onRevealLetter={handleRevealLetterHelp}
-        onSuggestWord={handleSuggestWordHelp}
-        onFlashSolution={handleFlashSolutionHelp}
+        onRevealLetter={() => requestHint('revealLetter')}
+        onSuggestWord={() => requestHint('suggestWord')}
+        onFlashSolution={() => requestHint('flashSolution')}
       />
       <FlashHint hint={flashHint} />
 
-      <Board
-        guesses={guesses}
-        currentGuess={currentGuess}
-        currentGuessIndex={currentGuessIndex}
-        gameStatus={gameStatus}
-        solution={solution}
-      />
+      <Board guesses={guesses} currentGuess={currentGuess} />
+
+      {mode === 'multiplayer' ? <OpponentBoard rows={opponentRows} /> : null}
+
+      {message ? <p className="lobby-error" role="alert">{message}</p> : null}
+
+      {outcome ? (
+        <div className="result-card">
+          <p className="result-text">{resultText}</p>
+          {onPlayAgain ? (
+            <button className="setup-start-button" type="button" onClick={onPlayAgain}>
+              Play again
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <button className="text-button" type="button" onClick={onExit}>
         Back to home

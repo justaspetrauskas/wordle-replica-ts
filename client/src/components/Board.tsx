@@ -1,25 +1,32 @@
-import type { GameStatus } from '../types/game';
+import type { SubmittedGuess } from '../types/game';
+import { MAX_GUESSES } from '../constants';
 import { Line } from './Line';
 
 interface BoardProps {
-  guesses: (string | null)[];
+  guesses: SubmittedGuess[];
   currentGuess: string[];
-  currentGuessIndex: number;
-  gameStatus: GameStatus;
-  solution: string;
 }
 
-export function Board({ guesses, currentGuess, currentGuessIndex, gameStatus, solution }: BoardProps) {
+export function Board({ guesses, currentGuess }: BoardProps) {
   return (
     <div className="board">
-      {guesses.map((guess, index) => (
-        <Line
-          key={index}
-          guess={index === currentGuessIndex && gameStatus === 'playing' ? currentGuess.join('') : guess}
-          solution={solution}
-          isCommitted={guess !== null && (index < currentGuessIndex || gameStatus === 'ended')}
-        />
-      ))}
+      {Array.from({ length: MAX_GUESSES }, (_, index) => {
+        const submitted = guesses[index];
+
+        if (submitted) {
+          return <Line key={index} word={submitted.word} states={submitted.states} />;
+        }
+
+        const isCurrentRow = index === guesses.length;
+
+        return (
+          <Line
+            key={index}
+            word={isCurrentRow ? currentGuess.join('') : ''}
+            states={null}
+          />
+        );
+      })}
     </div>
   );
 }

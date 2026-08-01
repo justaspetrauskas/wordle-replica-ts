@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { LanguageCode, RoomStatus } from '../types/game';
+import type { LanguageCode, RoomMode, RoomStatus } from '../types/game';
 import { socket } from '../lib/socket';
+import { getPlayerId } from '../lib/player';
 
-export function useMultiplayerRoom() {
+/**
+ * Owns the connection and the room lifecycle (create / join / wait). Solo games
+ * are rooms too, so the server stays the single source of truth in both modes.
+ */
+export function useRoom() {
   const [roomId, setRoomId] = useState<string>('');
   const [status, setStatus] = useState<RoomStatus>('idle');
   const [error, setError] = useState<string>('');
@@ -44,10 +49,10 @@ export function useMultiplayerRoom() {
     };
   }, []);
 
-  const createRoom = useCallback((language: LanguageCode) => {
+  const createRoom = useCallback((language: LanguageCode, mode: RoomMode) => {
     setError('');
     setStatus('pending');
-    socket.emit('create_room', { language });
+    socket.emit('create_room', { language, mode, playerId: getPlayerId() });
   }, []);
 
   const joinRoom = useCallback((code: string) => {
@@ -61,7 +66,7 @@ export function useMultiplayerRoom() {
     setError('');
     setRoomId(normalizedCode);
     setStatus('pending');
-    socket.emit('join_room', normalizedCode);
+    socket.emit('join_room', { roomId: normalizedCode, playerId: getPlayerId() });
   }, []);
 
   return { roomId, status, error, createRoom, joinRoom };

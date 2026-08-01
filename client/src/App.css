@@ -136,13 +136,53 @@
   text-align: center;
 }
 
-.room-code {
+.result-card {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.result-text {
   margin: 0;
   color: #1a1a1b;
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: 0.25em;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-align: center;
+}
+
+.opponent-board {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.board--mini {
+  width: 84px;
+  gap: 3px;
+}
+
+.board--mini .line {
+  gap: 3px;
+}
+
+.board--mini .cell {
+  border-width: 1px;
+  border-radius: 3px;
+}
+
+.room-code {
+  margin: 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #1a1a1b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-indent: 0.2em;
 }
 
 .room-code-input {

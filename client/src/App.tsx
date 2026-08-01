@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import './App.css';
 import type { GameMode } from './types/game';
 import { Home } from './components/Home';
-import { Game } from './components/Game';
+import { SoloGame } from './components/SoloGame';
 import { MultiplayerLobby } from './components/MultiplayerLobby';
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
   const backToHome = useCallback(() => setGameMode(null), []);
 
   if (gameMode === 'solo') {
-    return <Game onExit={backToHome} />;
+    return <SoloGame onExit={backToHome} />;
   }
 
   if (gameMode === 'multiplayer') {

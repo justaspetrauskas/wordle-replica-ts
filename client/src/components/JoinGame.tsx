@@ -30,6 +30,7 @@ export function JoinGame({ status, error, onJoin, onBack }: JoinGameProps) {
           maxLength={ROOM_CODE_LENGTH}
           autoComplete="off"
           autoCapitalize="characters"
+          spellCheck={false}
           placeholder="ABC123"
         />
         <button

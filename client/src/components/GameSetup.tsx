@@ -6,9 +6,18 @@ interface GameSetupProps {
   onSelectLanguage: (lang: LanguageCode) => void;
   onStart: () => void;
   onBack?: () => void;
+  isStarting?: boolean;
+  error?: string;
 }
 
-export function GameSetup({ selectedLanguage, onSelectLanguage, onStart, onBack }: GameSetupProps) {
+export function GameSetup({
+  selectedLanguage,
+  onSelectLanguage,
+  onStart,
+  onBack,
+  isStarting = false,
+  error = '',
+}: GameSetupProps) {
   return (
     <main className="game game--setup">
       <div className="setup-card">
@@ -21,10 +30,11 @@ export function GameSetup({ selectedLanguage, onSelectLanguage, onStart, onBack 
           className="setup-start-button"
           type="button"
           onClick={onStart}
-          disabled={!selectedLanguage}
+          disabled={!selectedLanguage || isStarting}
         >
-          Start game
+          {isStarting ? 'Starting…' : 'Start game'}
         </button>
+        {error ? <p className="lobby-error" role="alert">{error}</p> : null}
         {onBack ? (
           <button className="text-button" type="button" onClick={onBack}>
             Back to home

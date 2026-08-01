@@ -6,9 +6,24 @@ export type LanguageCode = 'en' | 'es' | 'da' | 'lt';
 
 export type GameMode = 'solo' | 'multiplayer' | 'ai';
 
+/** Modes the server can actually host a room for. */
+export type RoomMode = Exclude<GameMode, 'ai'>;
+
 export type LobbyView = 'menu' | 'create' | 'join';
 
 export type RoomStatus = 'idle' | 'pending' | 'waiting' | 'playing';
+
+export type PlayerStatus = 'playing' | 'won' | 'lost';
+
+export type Outcome = 'won' | 'lost';
+
+export type HintKind = 'revealLetter' | 'suggestWord' | 'flashSolution';
+
+/** A guess the server has graded. The client never grades one itself. */
+export interface SubmittedGuess {
+  word: string;
+  states: LetterState[];
+}
 
 export interface HelpUsage {
   revealLetter: boolean;
@@ -21,11 +36,4 @@ export interface FlashHint {
   top: number;
   left: number;
   word: string;
-}
-
-export interface RandomWordResponse {
-  word: string;
-  length: number;
-  category: string;
-  language: string;
 }

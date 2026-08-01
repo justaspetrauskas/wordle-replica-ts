@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { LobbyView } from '../types/game';
-import { useMultiplayerRoom } from '../hooks/useMultiplayerRoom';
+import { useRoom } from '../hooks/useRoom';
 import { CreateGame } from './CreateGame';
 import { JoinGame } from './JoinGame';
+import { Game } from './Game';
 
 interface MultiplayerLobbyProps {
   onExit: () => void;
@@ -10,23 +11,12 @@ interface MultiplayerLobbyProps {
 
 export function MultiplayerLobby({ onExit }: MultiplayerLobbyProps) {
   const [view, setView] = useState<LobbyView>('menu');
-  const { roomId, status, error, createRoom, joinRoom } = useMultiplayerRoom();
+  const { roomId, status, error, createRoom, joinRoom } = useRoom();
 
   const backToLobby = () => setView('menu');
 
-  if (status === 'playing') {
-    return (
-      <main className="game game--setup">
-        <div className="setup-card">
-          <h1 className="setup-title">Both players are in</h1>
-          <p className="lobby-note">Room <strong>{roomId}</strong> has started.</p>
-          <p className="lobby-note">The shared board is not built yet.</p>
-          <button className="setup-start-button" type="button" onClick={onExit}>
-            Back to home
-          </button>
-        </div>
-      </main>
-    );
+  if (status === 'playing' && roomId) {
+    return <Game key={roomId} roomId={roomId} mode="multiplayer" onExit={onExit} />;
   }
 
   if (view === 'create') {
@@ -35,7 +25,7 @@ export function MultiplayerLobby({ onExit }: MultiplayerLobbyProps) {
         roomId={roomId}
         status={status}
         error={error}
-        onCreate={createRoom}
+        onCreate={(language) => createRoom(language, 'multiplayer')}
         onBack={backToLobby}
       />
     );

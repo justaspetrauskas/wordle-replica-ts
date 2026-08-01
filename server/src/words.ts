@@ -3,7 +3,7 @@ const WORD_LENGTH = 5;
 const WORD_COUNT = 100;
 
 
-type LanguageCode = "en" | "es"; // adjust later
+export type LanguageCode = "en" | "es" | "da" | "lt";
 
 type RandomWordResponse = {
   word: string;

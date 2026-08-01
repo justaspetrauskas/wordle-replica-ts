@@ -1,24 +1,25 @@
 import type { LetterState } from '../types/game';
-import { getLetterStates } from '../lib/wordle';
 import { WORD_LENGTH } from '../constants';
 import { Cell } from './Cell';
 
 interface LineProps {
-  guess: string | null;
-  solution: string;
-  isCommitted: boolean;
+  word: string;
+  /** Server-graded states, or null while the row is still being typed. */
+  states: LetterState[] | null;
+  hideLetters?: boolean;
 }
 
-export function Line({ guess, solution, isCommitted }: LineProps) {
-  const letters = Array.from({ length: WORD_LENGTH }, (_, index) => guess?.[index] ?? '');
-  const states: LetterState[] = isCommitted && guess && solution
-    ? getLetterStates(guess, solution)
-    : Array(WORD_LENGTH).fill('empty');
+export function Line({ word, states, hideLetters = false }: LineProps) {
+  const letters = Array.from({ length: WORD_LENGTH }, (_, index) => word[index] ?? '');
 
   return (
     <div className="line">
       {letters.map((letter, index) => (
-        <Cell key={index} character={letter} state={states[index]} />
+        <Cell
+          key={index}
+          character={hideLetters ? '' : letter}
+          state={states?.[index] ?? 'empty'}
+        />
       ))}
     </div>
   );
