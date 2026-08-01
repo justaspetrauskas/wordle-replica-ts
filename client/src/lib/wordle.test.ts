@@ -1,4 +1,4 @@
-import { getLetterStates } from '../lib/wordle';
+import { getLetterStates } from './wordle';
 import type { LetterState } from '../types/game';
 
 describe('getLetterStates', () => {

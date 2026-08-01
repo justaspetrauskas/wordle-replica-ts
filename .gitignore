@@ -23,7 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-GUIDE.md
+client/GUIDE.md
 .vercel
 .github/copilot-instructions.md
 .github/agents/*

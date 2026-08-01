@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import type { LanguageCode } from './types/game';
 import { useGameState } from './hooks/useGameState';
@@ -10,6 +10,16 @@ import { FlashHint } from './components/FlashHint';
 function App() {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | ''>('');
   const [hasStarted, setHasStarted] = useState<boolean>(false);
+
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    fetch("http://localhost:3001/api/hello")
+      .then((response) => response.json())
+      .then((data) => {
+        setMessage(data.message);
+      });
+  }, []);
 
   const {
     solution,
@@ -51,6 +61,9 @@ function App() {
         onFlashSolution={handleFlashSolutionHelp}
       />
       <FlashHint hint={flashHint} />
+
+<p>{message}</p>
+
       <Board
         guesses={guesses}
         currentGuess={currentGuess}
