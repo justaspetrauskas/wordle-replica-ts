@@ -1,18 +1,33 @@
-import type { GameStatus, RoomMode } from '../types/game';
+import type {
+  GameStatus,
+  LanguageCode,
+  RoomMode,
+  RoomReconnectedPayload,
+} from '../types/game';
 import { useGame } from '../hooks/useGame';
 import { Board } from './Board';
 import { HelpPanel } from './HelpPanel';
 import { FlashHint } from './FlashHint';
+import { Keyboard } from './Keyboard';
 import { OpponentBoard } from './OpponentBoard';
 
 interface GameProps {
   roomId: string;
   mode: RoomMode;
+  language: LanguageCode;
+  restored: RoomReconnectedPayload | null;
   onExit: () => void;
   onPlayAgain?: () => void;
 }
 
-export function Game({ roomId, mode, onExit, onPlayAgain }: GameProps) {
+export function Game({
+  roomId,
+  mode,
+  language,
+  restored,
+  onExit,
+  onPlayAgain,
+}: GameProps) {
   const {
     guesses,
     currentGuess,
@@ -23,8 +38,13 @@ export function Game({ roomId, mode, onExit, onPlayAgain }: GameProps) {
     message,
     solution,
     outcome,
+    letterStates,
+    canType,
+    pressLetter,
+    pressEnter,
+    pressBackspace,
     requestHint,
-  } = useGame(roomId);
+  } = useGame(roomId, restored);
 
   const gameStatus: GameStatus = playerStatus === 'playing' && !outcome ? 'playing' : 'ended';
 
@@ -33,7 +53,7 @@ export function Game({ roomId, mode, onExit, onPlayAgain }: GameProps) {
     : `Round over — the word was "${solution.toUpperCase()}".`;
 
   return (
-    <main className="game">
+    <main className="game game--play">
       <HelpPanel
         gameStatus={gameStatus}
         helpUsage={helpUsage}
@@ -46,6 +66,15 @@ export function Game({ roomId, mode, onExit, onPlayAgain }: GameProps) {
       <Board guesses={guesses} currentGuess={currentGuess} />
 
       {mode === 'multiplayer' ? <OpponentBoard rows={opponentRows} /> : null}
+
+      <Keyboard
+        language={language}
+        letterStates={letterStates}
+        disabled={!canType}
+        onLetter={pressLetter}
+        onEnter={pressEnter}
+        onBackspace={pressBackspace}
+      />
 
       {message ? <p className="lobby-error" role="alert">{message}</p> : null}
 

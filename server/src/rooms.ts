@@ -1,5 +1,6 @@
 import { customAlphabet } from "nanoid";
 import type { LetterState } from "./game.js";
+import type { LanguageCode } from "./words.js";
 
 export type GameMode = "solo" | "multiplayer";
 
@@ -27,6 +28,8 @@ export type Player = {
 export type Room = {
   id: string;
   mode: GameMode;
+  /** Drives the on-screen keyboard, so a joining player gets the right alphabet. */
+  language: LanguageCode;
   solution: string;
   wordPool: string[];
   status: "waiting" | "playing" | "finished";
@@ -57,13 +60,15 @@ function createRoomId(): string {
 export function createRoom(
   solution: string,
   wordPool: string[],
-  mode: GameMode
+  mode: GameMode,
+  language: LanguageCode
 ): Room {
   const id = createRoomId();
 
   const room: Room = {
     id,
     mode,
+    language,
     solution,
     wordPool,
     status: "waiting",

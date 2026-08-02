@@ -13,6 +13,11 @@
   width: min(92vw, 360px);
 }
 
+/* Wider than the menus so the keyboard keys stay thumb-sized on a phone. */
+.game--play {
+  width: min(96vw, 400px);
+}
+
 .setup-card {
   width: 100%;
   display: grid;
@@ -299,9 +304,73 @@
   color: #1a1a1b;
 }
 
+.keyboard {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  touch-action: manipulation;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.key {
+  flex: 1 1 0;
+  min-width: 0;
+  /* 44px keeps every key a comfortable tap target. */
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid #c7cad1;
+  border-radius: 6px;
+  background: #d3d6da;
+  color: #1a1a1b;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.key--action {
+  flex: 1.6 1 0;
+  font-size: clamp(0.6rem, 2.4vw, 0.75rem);
+}
+
+.key--correct {
+  background: #6aaa64;
+  border-color: #6aaa64;
+  color: #ffffff;
+}
+
+.key--present {
+  background: #c9b458;
+  border-color: #c9b458;
+  color: #ffffff;
+}
+
+.key--absent {
+  background: #787c7e;
+  border-color: #787c7e;
+  color: #ffffff;
+}
+
+.key:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 @media (max-width: 420px) {
   .game {
     width: min(92vw, 280px);
+  }
+
+  .game--play {
+    width: 96vw;
   }
 
   .language-flags {
@@ -314,5 +383,9 @@
 
   .line {
     gap: 6px;
+  }
+
+  .keyboard-row {
+    gap: 3px;
   }
 }

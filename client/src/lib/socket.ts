@@ -13,11 +13,12 @@ import type {
 interface ServerToClientEvents {
   room_created: (payload: { roomId: string }) => void;
   room_error: (payload: { message: string }) => void;
-  game_started: () => void;
+  game_started: (payload: { language: LanguageCode }) => void;
   guess_result: (payload: { guesses: SubmittedGuess[]; status: PlayerStatus }) => void;
   invalid_guess: (payload: { message: string }) => void;
+  // No playerId: it is the opponent's persistent identity and would be enough
+  // to take over their seat.
   opponent_progress: (payload: {
-    playerId: string;
     rows: LetterState[][];
     status: PlayerStatus;
   }) => void;

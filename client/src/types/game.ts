@@ -22,6 +22,12 @@ export type Outcome = 'won' | 'lost';
 
 export type HintKind = 'revealLetter' | 'suggestWord' | 'flashSolution';
 
+/** A graded state a key can carry. Unlike LetterState there is no 'empty'. */
+export type KeyState = Exclude<LetterState, 'empty'>;
+
+/** Best-known state per letter, built from the player's own graded guesses. */
+export type KeyboardLetterStates = Record<string, KeyState>;
+
 /** A guess the server has graded. The client never grades one itself. */
 export interface SubmittedGuess {
   word: string;
@@ -44,6 +50,7 @@ export interface FlashHint {
 /** Everything the server sends back to rebuild the UI after a refresh. */
 export interface RoomReconnectedPayload {
   roomId: string;
+  language: LanguageCode;
   guesses: SubmittedGuess[];
   status: PlayerStatus;
   helpUsage: HelpUsage;

@@ -10,7 +10,8 @@ interface SoloGameProps {
 
 export function SoloGame({ onExit }: SoloGameProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | ''>('');
-  const { roomId, status, error, createRoom } = useRoom('solo');
+  const { roomId, status, error, language, restored, restoreCount, createRoom } =
+    useRoom('solo');
 
   // A solo game is a one-player room, so the secret word never reaches the
   // client until the round is over.
@@ -22,9 +23,11 @@ export function SoloGame({ onExit }: SoloGameProps) {
   if (roomId && (status === 'playing' || status === 'finished')) {
     return (
       <Game
-        key={roomId}
+        key={`${roomId}:${restoreCount}`}
         roomId={roomId}
         mode="solo"
+        language={language}
+        restored={restored}
         onExit={onExit}
         onPlayAgain={startGame}
       />

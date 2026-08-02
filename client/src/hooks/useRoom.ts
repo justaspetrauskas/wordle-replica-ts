@@ -24,6 +24,13 @@ export function useRoom(mode: RoomMode) {
   );
   const [status, setStatus] = useState<RoomStatus>('idle');
   const [error, setError] = useState<string>('');
+  const [language, setLanguage] = useState<LanguageCode>('en');
+  // <Game> only mounts once status becomes 'playing', which happens *because*
+  // of room_reconnected — so a listener inside useGame would be registered too
+  // late to ever see it. The payload is held here and passed down instead.
+  const [restored, setRestored] = useState<RoomReconnectedPayload | null>(null);
+  // Bumped on every restore so callers can remount <Game> and reseed its state.
+  const [restoreCount, setRestoreCount] = useState<number>(0);
 
   useEffect(() => {
     const handleConnect = () => {
@@ -42,16 +49,18 @@ export function useRoom(mode: RoomMode) {
       saveRoom(createdRoomId, mode);
       setRoomId(createdRoomId);
       setStatus('waiting');
+      // A fresh room must not inherit an earlier room's restored board.
+      setRestored(null);
     };
 
-    const handleRoomReconnected = ({
-      roomId: reconnectedRoomId,
-      roomStatus,
-    }: RoomReconnectedPayload) => {
-      saveRoom(reconnectedRoomId, mode);
-      setRoomId(reconnectedRoomId);
+    const handleRoomReconnected = (payload: RoomReconnectedPayload) => {
+      saveRoom(payload.roomId, mode);
+      setRoomId(payload.roomId);
+      setLanguage(payload.language);
+      setRestored(payload);
+      setRestoreCount((count) => count + 1);
       setError('');
-      setStatus(roomStatus);
+      setStatus(payload.roomStatus);
     };
 
     const handleRoomError = ({ message }: { message: string }) => {
@@ -60,12 +69,15 @@ export function useRoom(mode: RoomMode) {
       clearSavedRoom();
       setRoomId('');
       setStatus('idle');
+      setRestored(null);
       setError(message);
     };
 
-    const handleGameStarted = () => {
+    const handleGameStarted = ({ language: roomLanguage }: { language: LanguageCode }) => {
       setError('');
+      setLanguage(roomLanguage);
       setStatus('playing');
+      setRestored(null);
     };
 
     const handleGameOver = () => {
@@ -143,12 +155,16 @@ export function useRoom(mode: RoomMode) {
     setRoomId('');
     setStatus('idle');
     setError('');
+    setRestored(null);
   }, []);
 
   return {
     roomId,
     status,
     error,
+    language,
+    restored,
+    restoreCount,
     createRoom,
     joinRoom,
     leaveRoom,

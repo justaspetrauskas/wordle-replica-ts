@@ -90,6 +90,7 @@ export function setupSocket(io: Server) {
       // round is over, so it never reaches a client mid-game.
       socket.emit("room_reconnected", {
         roomId: room.id,
+        language: room.language,
         guesses: player.guesses,
         status: player.status,
         helpUsage: player.helpUsage,
@@ -137,7 +138,7 @@ export function setupSocket(io: Server) {
 
         const solution = words[Math.floor(Math.random() * words.length)];
 
-        const room = createRoom(solution, words, mode);
+        const room = createRoom(solution, words, mode, language);
 
         addPlayer(room, playerId, socket.id);
 
@@ -151,7 +152,7 @@ export function setupSocket(io: Server) {
 
         if (mode === "solo") {
           room.status = "playing";
-          socket.emit("game_started");
+          socket.emit("game_started", { language: room.language });
         }
       } catch (error) {
         console.error("Failed to create room:", error);
@@ -215,7 +216,8 @@ export function setupSocket(io: Server) {
 
         room.status = "playing";
 
-        io.to(room.id).emit("game_started");
+        // The joining player never chose a language, so the room reports it.
+        io.to(room.id).emit("game_started", { language: room.language });
 
         console.log(`Game started in room ${room.id}`);
       }
@@ -265,9 +267,10 @@ export function setupSocket(io: Server) {
         status: player.status,
       });
 
-      // Opponent only receives colours, never the actual letters.
+      // Opponent only receives colours — never the letters, and never the
+      // player id, which would otherwise be enough to hijack the seat via
+      // reconnect_room.
       socket.to(room.id).emit("opponent_progress", {
-        playerId: player.id,
         rows: player.guesses.map((entry) => entry.states),
         status: player.status,
       });

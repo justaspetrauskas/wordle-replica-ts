@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   FlashHint,
   HelpUsage,
   HintKind,
+  KeyState,
+  KeyboardLetterStates,
   LetterState,
   Outcome,
   PlayerStatus,
@@ -12,6 +14,21 @@ import type {
 import { socket } from '../lib/socket';
 import { WORD_LENGTH } from '../constants';
 import { getPlayerId } from '../lib/player';
+
+/** A better-known state always wins, so a letter never downgrades to absent. */
+const STATE_RANK: Record<KeyState, number> = {
+  absent: 0,
+  present: 1,
+  correct: 2,
+};
+
+/** Guards against a payload left over from a previous room. */
+function restoreFor(
+  roomId: string,
+  restored: RoomReconnectedPayload | null
+): RoomReconnectedPayload | null {
+  return restored && restored.roomId === roomId ? restored : null;
+}
 
 const INITIAL_HELP_USAGE: HelpUsage = {
   revealLetter: false,
@@ -26,17 +43,40 @@ const INITIAL_FLASH_HINT: FlashHint = { visible: false, top: 50, left: 50, word:
  * being typed, and the tiles. Grading, stored guesses and the win/loss call all
  * come back from the server.
  */
-export function useGame(roomId: string) {
-  const [guesses, setGuesses] = useState<SubmittedGuess[]>([]);
+export function useGame(
+  roomId: string,
+  restored: RoomReconnectedPayload | null
+) {
+  // Seeded from the reconnect payload on mount. Callers remount this hook with
+  // a fresh key when a new payload arrives, so there is no prop-to-state sync.
+  const restore = restoreFor(roomId, restored);
+  const isFinished = restore?.roomStatus === 'finished';
+
+  const [guesses, setGuesses] = useState<SubmittedGuess[]>(
+    () => restore?.guesses ?? []
+  );
   const [currentGuess, setCurrentGuess] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [playerStatus, setPlayerStatus] = useState<PlayerStatus>('playing');
-  const [opponentRows, setOpponentRows] = useState<LetterState[][]>([]);
-  const [helpUsage, setHelpUsage] = useState<HelpUsage>(INITIAL_HELP_USAGE);
+  const [playerStatus, setPlayerStatus] = useState<PlayerStatus>(
+    () => restore?.status ?? 'playing'
+  );
+  const [opponentRows, setOpponentRows] = useState<LetterState[][]>(
+    () => restore?.opponentRows ?? []
+  );
+  const [helpUsage, setHelpUsage] = useState<HelpUsage>(
+    () => restore?.helpUsage ?? INITIAL_HELP_USAGE
+  );
   const [flashHint, setFlashHint] = useState<FlashHint>(INITIAL_FLASH_HINT);
   const [message, setMessage] = useState<string>('');
-  const [solution, setSolution] = useState<string>('');
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // The server only sends the word once the round is over.
+  const [solution, setSolution] = useState<string>(
+    () => (isFinished ? restore?.solution ?? '' : '')
+  );
+  const [outcome, setOutcome] = useState<Outcome | null>(() => {
+    if (!isFinished) return null;
+
+    return restore?.status === 'won' ? 'won' : 'lost';
+  });
 
   useEffect(() => {
     const handleGuessResult = ({
@@ -101,39 +141,12 @@ export function useGame(roomId: string) {
       setMessage(hintMessage ?? '');
     };
 
-    const handleRoomReconnected = ({
-      guesses: restoredGuesses,
-      status,
-      helpUsage: restoredHelpUsage,
-      opponentRows: restoredOpponentRows,
-      roomStatus,
-      solution: revealedSolution,
-    }: RoomReconnectedPayload) => {
-      setGuesses(restoredGuesses);
-      setPlayerStatus(status);
-      setHelpUsage(restoredHelpUsage);
-      setOpponentRows(restoredOpponentRows);
-      setCurrentGuess([]);
-      setIsSubmitting(false);
-      setMessage('');
-
-      if (roomStatus === 'finished') {
-        // The server only sends the word once the round is over.
-        setSolution(revealedSolution ?? '');
-        setOutcome(status === 'won' ? 'won' : 'lost');
-      } else {
-        setSolution('');
-        setOutcome(null);
-      }
-    };
-
     socket.on('guess_result', handleGuessResult);
     socket.on('invalid_guess', handleInvalidGuess);
     socket.on('opponent_progress', handleOpponentProgress);
     socket.on('game_over', handleGameOver);
     socket.on('player_left', handlePlayerLeft);
     socket.on('hint_result', handleHintResult);
-    socket.on('room_reconnected', handleRoomReconnected);
 
     return () => {
       socket.off('guess_result', handleGuessResult);
@@ -142,34 +155,75 @@ export function useGame(roomId: string) {
       socket.off('game_over', handleGameOver);
       socket.off('player_left', handlePlayerLeft);
       socket.off('hint_result', handleHintResult);
-      socket.off('room_reconnected', handleRoomReconnected);
     };
   }, []);
 
+  const canType = playerStatus === 'playing' && !outcome && !isSubmitting;
+
+  // Shared by the physical keyboard and the on-screen one, so both behave
+  // identically.
+  const pressLetter = useCallback(
+    (letter: string) => {
+      if (!canType || currentGuess.length >= WORD_LENGTH) return;
+      setCurrentGuess((prev) => [...prev, letter.toLowerCase()]);
+    },
+    [canType, currentGuess.length]
+  );
+
+  const pressBackspace = useCallback(() => {
+    if (!canType) return;
+    setCurrentGuess((prev) => prev.slice(0, -1));
+  }, [canType]);
+
+  const pressEnter = useCallback(() => {
+    if (!canType || currentGuess.length !== WORD_LENGTH) return;
+    setIsSubmitting(true);
+    socket.emit('submit_guess', { roomId, guess: currentGuess.join('') });
+  }, [canType, currentGuess, roomId]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (playerStatus !== 'playing' || outcome || isSubmitting) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       if (e.key === 'Backspace') {
-        setCurrentGuess((prev) => prev.slice(0, -1));
+        pressBackspace();
         return;
       }
 
       if (e.key === 'Enter') {
-        if (currentGuess.length !== WORD_LENGTH) return;
-        setIsSubmitting(true);
-        socket.emit('submit_guess', { roomId, guess: currentGuess.join('') });
+        pressEnter();
         return;
       }
 
-      if (/^\p{L}$/u.test(e.key) && currentGuess.length < WORD_LENGTH) {
-        setCurrentGuess((prev) => [...prev, e.key.toLowerCase()]);
+      if (/^\p{L}$/u.test(e.key)) {
+        pressLetter(e.key);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentGuess, isSubmitting, outcome, playerStatus, roomId]);
+  }, [pressBackspace, pressEnter, pressLetter]);
+
+  /** Colours the on-screen keys from the player's own graded guesses. */
+  const letterStates = useMemo<KeyboardLetterStates>(() => {
+    const states: KeyboardLetterStates = {};
+
+    for (const guess of guesses) {
+      guess.word.split('').forEach((letter, index) => {
+        const state = guess.states[index];
+
+        if (state === 'empty' || !state) return;
+
+        const known = states[letter];
+
+        if (!known || STATE_RANK[state] > STATE_RANK[known]) {
+          states[letter] = state;
+        }
+      });
+    }
+
+    return states;
+  }, [guesses]);
 
   const requestHint = useCallback((hint: HintKind) => {
     socket.emit('request_hint', { roomId, hint });
@@ -185,6 +239,11 @@ export function useGame(roomId: string) {
     message,
     solution,
     outcome,
+    letterStates,
+    canType,
+    pressLetter,
+    pressEnter,
+    pressBackspace,
     requestHint,
   };
 }
