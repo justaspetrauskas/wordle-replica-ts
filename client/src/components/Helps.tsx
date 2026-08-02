@@ -57,13 +57,17 @@ export function HelpsBar({
 /**
  * The solution, shown blurred and briefly. It is meant to be *almost* readable
  * — that is the cost of spending the help.
+ *
+ * The blur and alpha here pair with FLASH_HINT_MS in useGame. Tested over the
+ * category artwork, not flat paper: past roughly blur 8 / alpha 0.22 the word
+ * disappears into the wash entirely and the help stops being worth spending.
  */
 export function HelpFlash({ hint }: { hint: FlashHintType }) {
   if (!hint.visible) return null;
 
   return (
     <p
-      className="pointer-events-none fixed z-40 -translate-x-1/2 font-accent text-4xl font-bold uppercase tracking-[0.35em] text-navy/35 blur-[5px] sm:text-5xl"
+      className="pointer-events-none fixed z-40 -translate-x-1/2 font-accent text-4xl font-bold uppercase tracking-[0.35em] text-navy/28 blur-[7px] sm:text-5xl"
       style={{ top: `${hint.top}vh`, left: `${hint.left}vw` }}
     >
       {hint.word}
