@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   FlashHint,
   HelpUsage,
@@ -68,6 +68,18 @@ export function useGame(
   );
   const [flashHint, setFlashHint] = useState<FlashHint>(INITIAL_FLASH_HINT);
   const [message, setMessage] = useState<string>('');
+  // A rejected guess shakes the board rather than only printing a line of
+  // text, so the feedback lands where the player is already looking.
+  const [shake, setShake] = useState<boolean>(false);
+  const shakeTimer = useRef<number | undefined>(undefined);
+
+  const bump = useCallback(() => {
+    window.clearTimeout(shakeTimer.current);
+    setShake(true);
+    shakeTimer.current = window.setTimeout(() => setShake(false), 450);
+  }, []);
+
+  useEffect(() => () => window.clearTimeout(shakeTimer.current), []);
   // The server only sends the word once the round is over.
   const [solution, setSolution] = useState<string>(
     () => (isFinished ? restore?.solution ?? '' : '')
@@ -94,6 +106,7 @@ export function useGame(
       // The typed word is kept so the player can fix it instead of retyping.
       setIsSubmitting(false);
       setMessage(reason);
+      bump();
     };
 
     const handleOpponentProgress = ({ rows }: { rows: LetterState[][] }) => {
@@ -156,7 +169,7 @@ export function useGame(
       socket.off('player_left', handlePlayerLeft);
       socket.off('hint_result', handleHintResult);
     };
-  }, []);
+  }, [bump]);
 
   const canType = playerStatus === 'playing' && !outcome && !isSubmitting;
 
@@ -176,10 +189,19 @@ export function useGame(
   }, [canType]);
 
   const pressEnter = useCallback(() => {
-    if (!canType || currentGuess.length !== WORD_LENGTH) return;
+    if (!canType) return;
+
+    if (currentGuess.length !== WORD_LENGTH) {
+      // Caught here rather than at the server so a half-typed row costs no
+      // round trip. The server still validates everything it is sent.
+      setMessage(`Guess must be ${WORD_LENGTH} letters`);
+      bump();
+      return;
+    }
+
     setIsSubmitting(true);
     socket.emit('submit_guess', { roomId, guess: currentGuess.join('') });
-  }, [canType, currentGuess, roomId]);
+  }, [bump, canType, currentGuess, roomId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -241,6 +263,7 @@ export function useGame(
     outcome,
     letterStates,
     canType,
+    shake,
     pressLetter,
     pressEnter,
     pressBackspace,

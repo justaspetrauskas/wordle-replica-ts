@@ -1,111 +1,146 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+/* `static` so every token is emitted as a custom property. Tailwind otherwise
+   tree-shakes any theme variable no utility class references, which silently
+   breaks hand-written `var(--color-*)` rules and inline styles. */
+@theme static {
+  --font-display: "Shippori Mincho", "Times New Roman", serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-accent: "Syne", system-ui, sans-serif;
+  --color-ink: #1b1814;
+  --color-washi: #f4efe4;
+  --color-paper: #efe6d6;
+  --color-coral: #d85a45;
+  /* Darkened coral for text and CTAs. Plain coral only reaches 3.10:1 on
+     paper, which fails AA for body copy; this holds the hue at 4.54:1. */
+  --color-coral-ink: #ac4837;
+  --color-navy: #1d3557;
+  --color-ochre: #e0a140;
+  --color-olive: #5f6f3a;
+  --color-teal: #2f6f6a;
+  --color-blush: #e8b4a2;
+  --color-mute: #6f675c;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
+html,
+body,
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  min-height: 100%;
+}
+
+:root {
+  --cutout-opacity: 0.62;
 }
 
 body {
   margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  background-color: #efe6d6;
+  background-image:
+    radial-gradient(circle at 14% 12%, rgba(216, 90, 69, 0.08), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(29, 53, 87, 0.08), transparent 28%),
+    radial-gradient(circle at 78% 88%, rgba(224, 161, 64, 0.1), transparent 32%),
+    radial-gradient(circle at 8% 86%, rgba(95, 111, 58, 0.08), transparent 26%);
+  background-attachment: fixed;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+button,
+a,
+input,
+select {
+  font-family: inherit;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-accent {
+  font-family: var(--font-accent);
+}
+
+.paper-card {
+  background: color-mix(in oklab, var(--color-washi) 94%, white);
+  box-shadow:
+    0 18px 50px -28px rgba(29, 53, 87, 0.35),
+    0 0 0 1px rgba(27, 24, 20, 0.06);
+}
+
+.rule {
+  height: 1px;
+  background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+}
+
+.field {
+  width: 100%;
+  border: 0;
+  border-bottom: 1.5px solid color-mix(in oklab, var(--color-ink) 28%, transparent);
+  background: transparent;
+  padding: 0.65rem 0;
+  outline: none;
+}
+
+.field:focus {
+  border-bottom-color: var(--color-navy);
+}
+
+.hanko {
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  transform: rotate(-6deg);
+}
+
+.tile-flip {
+  animation: flip 0.55s ease forwards;
+  transform-style: preserve-3d;
+}
+
+@keyframes flip {
+  0% {
+    transform: rotateX(0);
+  }
+  45% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0);
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+.shake {
+  animation: shake 0.45s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
   }
 }
-p {
-  margin: 0;
+
+.grain {
+  background-image: radial-gradient(rgba(27, 24, 20, 0.06) 0.6px, transparent 0.6px);
+  background-size: 4px 4px;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* The tile colour still has to land for players who prefer reduced motion —
+   only the flip and the shake are dropped. */
+@media (prefers-reduced-motion: reduce) {
+  .tile-flip,
+  .shake {
+    animation: none;
+  }
 }

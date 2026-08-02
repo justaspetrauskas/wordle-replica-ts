@@ -6,8 +6,7 @@ import type {
 } from '../types/game';
 import { useGame } from '../hooks/useGame';
 import { Board } from './Board';
-import { HelpPanel } from './HelpPanel';
-import { FlashHint } from './FlashHint';
+import { HelpsBar, HelpFlash } from './Helps';
 import { Keyboard } from './Keyboard';
 import { OpponentBoard } from './OpponentBoard';
 
@@ -40,6 +39,7 @@ export function Game({
     outcome,
     letterStates,
     canType,
+    shake,
     pressLetter,
     pressEnter,
     pressBackspace,
@@ -54,16 +54,16 @@ export function Game({
 
   return (
     <main className="game game--play">
-      <HelpPanel
+      <HelpsBar
         gameStatus={gameStatus}
         helpUsage={helpUsage}
         onRevealLetter={() => requestHint('revealLetter')}
         onSuggestWord={() => requestHint('suggestWord')}
         onFlashSolution={() => requestHint('flashSolution')}
       />
-      <FlashHint hint={flashHint} />
+      <HelpFlash hint={flashHint} />
 
-      <Board guesses={guesses} currentGuess={currentGuess} />
+      <Board guesses={guesses} currentGuess={currentGuess} shake={shake} />
 
       {mode === 'multiplayer' ? <OpponentBoard rows={opponentRows} /> : null}
 

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HelpPanel } from './HelpPanel';
+import { HelpsBar } from './Helps';
 import type { GameStatus, HelpUsage } from '../types/game';
 
 // Default props factory — all helps unused, game in progress
@@ -25,24 +25,24 @@ function makeProps(overrides?: {
   };
 }
 
-describe('HelpPanel', () => {
+describe('HelpsBar', () => {
   describe('Helps left counter', () => {
     it('shows "Helps left: 3" when all helps are unused', () => {
       // All three helps available — expect full count
-      render(<HelpPanel {...makeProps()} />);
+      render(<HelpsBar {...makeProps()} />);
       expect(screen.getByText('Helps left: 3')).toBeInTheDocument();
     });
 
     it('shows "Helps left: 2" when one help has been used', () => {
       // One help consumed — counter should decrement by one
-      render(<HelpPanel {...makeProps({ helpUsage: { revealLetter: true } })} />);
+      render(<HelpsBar {...makeProps({ helpUsage: { revealLetter: true } })} />);
       expect(screen.getByText('Helps left: 2')).toBeInTheDocument();
     });
 
     it('shows "Helps left: 0" when all helps have been used', () => {
       // All helps exhausted
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({
             helpUsage: { revealLetter: true, suggestWord: true, flashSolution: true },
           })}
@@ -54,24 +54,24 @@ describe('HelpPanel', () => {
 
   describe('Button enabled/disabled states while playing', () => {
     it('enables all three buttons when game is playing and no helps used', () => {
-      render(<HelpPanel {...makeProps()} />);
+      render(<HelpsBar {...makeProps()} />);
       expect(screen.getByRole('button', { name: /reveal one letter/i })).toBeEnabled();
       expect(screen.getByRole('button', { name: /suggest a matching word/i })).toBeEnabled();
       expect(screen.getByRole('button', { name: /flash full solution/i })).toBeEnabled();
     });
 
     it('disables the "Reveal letter" button when helpUsage.revealLetter is true', () => {
-      render(<HelpPanel {...makeProps({ helpUsage: { revealLetter: true } })} />);
+      render(<HelpsBar {...makeProps({ helpUsage: { revealLetter: true } })} />);
       expect(screen.getByRole('button', { name: /reveal one letter/i })).toBeDisabled();
     });
 
     it('disables the "Suggest word" button when helpUsage.suggestWord is true', () => {
-      render(<HelpPanel {...makeProps({ helpUsage: { suggestWord: true } })} />);
+      render(<HelpsBar {...makeProps({ helpUsage: { suggestWord: true } })} />);
       expect(screen.getByRole('button', { name: /suggest a matching word/i })).toBeDisabled();
     });
 
     it('disables the "Flash solution" button when helpUsage.flashSolution is true', () => {
-      render(<HelpPanel {...makeProps({ helpUsage: { flashSolution: true } })} />);
+      render(<HelpsBar {...makeProps({ helpUsage: { flashSolution: true } })} />);
       expect(screen.getByRole('button', { name: /flash full solution/i })).toBeDisabled();
     });
   });
@@ -79,7 +79,7 @@ describe('HelpPanel', () => {
   describe('Button states when game has ended', () => {
     it('disables all buttons when gameStatus is "ended"', () => {
       // Even if helps are unused the game is over — no actions allowed
-      render(<HelpPanel {...makeProps({ gameStatus: 'ended' })} />);
+      render(<HelpsBar {...makeProps({ gameStatus: 'ended' })} />);
       expect(screen.getByRole('button', { name: /reveal one letter/i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /suggest a matching word/i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /flash full solution/i })).toBeDisabled();
@@ -94,7 +94,7 @@ describe('HelpPanel', () => {
       const onFlashSolution = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ onRevealLetter, onSuggestWord, onFlashSolution })}
         />,
       );
@@ -113,7 +113,7 @@ describe('HelpPanel', () => {
       const onFlashSolution = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ onRevealLetter, onSuggestWord, onFlashSolution })}
         />,
       );
@@ -132,7 +132,7 @@ describe('HelpPanel', () => {
       const onFlashSolution = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ onRevealLetter, onSuggestWord, onFlashSolution })}
         />,
       );
@@ -151,7 +151,7 @@ describe('HelpPanel', () => {
       const onRevealLetter = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ helpUsage: { revealLetter: true }, onRevealLetter })}
         />,
       );
@@ -166,7 +166,7 @@ describe('HelpPanel', () => {
       const onSuggestWord = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ helpUsage: { suggestWord: true }, onSuggestWord })}
         />,
       );
@@ -181,7 +181,7 @@ describe('HelpPanel', () => {
       const onFlashSolution = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({ helpUsage: { flashSolution: true }, onFlashSolution })}
         />,
       );
@@ -198,7 +198,7 @@ describe('HelpPanel', () => {
       const onFlashSolution = vi.fn();
 
       render(
-        <HelpPanel
+        <HelpsBar
           {...makeProps({
             gameStatus: 'ended',
             onRevealLetter,
