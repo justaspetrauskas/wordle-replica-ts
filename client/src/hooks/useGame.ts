@@ -39,6 +39,14 @@ const INITIAL_HELP_USAGE: HelpUsage = {
 const INITIAL_FLASH_HINT: FlashHint = { visible: false, top: 50, left: 50, word: '' };
 
 /**
+ * How long the solution stays on screen for the peek help. Short enough that
+ * five letters cannot be read off comfortably — the help is meant to leave an
+ * impression, not hand over the answer. Tune together with the blur in
+ * <HelpFlash>.
+ */
+const FLASH_HINT_MS = 140;
+
+/**
  * Everything the client still owns during a round: the keyboard, the guess
  * being typed, and the tiles. Grading, stored guesses and the win/loss call all
  * come back from the server.
@@ -149,7 +157,7 @@ export function useGame(
 
         setTimeout(() => {
           setFlashHint((prev) => ({ ...prev, visible: false }));
-        }, 300);
+        }, FLASH_HINT_MS);
 
         return;
       }

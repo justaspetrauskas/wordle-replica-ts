@@ -63,7 +63,7 @@ export function HelpFlash({ hint }: { hint: FlashHintType }) {
 
   return (
     <p
-      className="pointer-events-none fixed z-40 -translate-x-1/2 font-accent text-4xl font-bold uppercase tracking-[0.35em] text-navy/45 blur-[2.5px] sm:text-5xl"
+      className="pointer-events-none fixed z-40 -translate-x-1/2 font-accent text-4xl font-bold uppercase tracking-[0.35em] text-navy/35 blur-[5px] sm:text-5xl"
       style={{ top: `${hint.top}vh`, left: `${hint.left}vw` }}
     >
       {hint.word}
