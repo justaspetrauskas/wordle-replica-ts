@@ -174,29 +174,6 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     [mode]
   );
 
-  const joinRoom = useCallback(
-    (code: string) => {
-      const normalizedCode = code.trim().toUpperCase();
-
-      if (!normalizedCode) {
-        setError('Enter a room code first.');
-        return;
-      }
-
-      saveRoom(normalizedCode, mode);
-
-      setError('');
-      setRoomId(normalizedCode);
-      setStatus('pending');
-
-      socket.emit('join_room', {
-        roomId: normalizedCode,
-        playerId: getPlayerId(),
-      });
-    },
-    [mode]
-  );
-
   /** Give up the current room so a refresh no longer resumes it. */
   const leaveRoom = useCallback(() => {
     clearSavedRoom();
@@ -215,7 +192,6 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     restored,
     restoreCount,
     createRoom,
-    joinRoom,
     leaveRoom,
   };
 }
