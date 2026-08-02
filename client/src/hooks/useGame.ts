@@ -6,6 +6,7 @@ import type {
   LetterState,
   Outcome,
   PlayerStatus,
+  RoomReconnectedPayload,
   SubmittedGuess,
 } from '../types/game';
 import { socket } from '../lib/socket';
@@ -63,8 +64,10 @@ export function useGame(roomId: string) {
       winnerId,
       solution: revealedSolution,
     }: { winnerId: string | null; solution: string }) => {
+      // The server reports the winner by persistent player id. socket.id is a
+      // per-connection value and would never match.
       setSolution(revealedSolution);
-      setOutcome(winnerId && winnerId === socket.id ? 'won' : 'lost');
+      setOutcome(winnerId && winnerId === getPlayerId() ? 'won' : 'lost');
       setIsSubmitting(false);
       setCurrentGuess([]);
     };
@@ -98,12 +101,39 @@ export function useGame(roomId: string) {
       setMessage(hintMessage ?? '');
     };
 
+    const handleRoomReconnected = ({
+      guesses: restoredGuesses,
+      status,
+      helpUsage: restoredHelpUsage,
+      opponentRows: restoredOpponentRows,
+      roomStatus,
+      solution: revealedSolution,
+    }: RoomReconnectedPayload) => {
+      setGuesses(restoredGuesses);
+      setPlayerStatus(status);
+      setHelpUsage(restoredHelpUsage);
+      setOpponentRows(restoredOpponentRows);
+      setCurrentGuess([]);
+      setIsSubmitting(false);
+      setMessage('');
+
+      if (roomStatus === 'finished') {
+        // The server only sends the word once the round is over.
+        setSolution(revealedSolution ?? '');
+        setOutcome(status === 'won' ? 'won' : 'lost');
+      } else {
+        setSolution('');
+        setOutcome(null);
+      }
+    };
+
     socket.on('guess_result', handleGuessResult);
     socket.on('invalid_guess', handleInvalidGuess);
     socket.on('opponent_progress', handleOpponentProgress);
     socket.on('game_over', handleGameOver);
     socket.on('player_left', handlePlayerLeft);
     socket.on('hint_result', handleHintResult);
+    socket.on('room_reconnected', handleRoomReconnected);
 
     return () => {
       socket.off('guess_result', handleGuessResult);
@@ -112,6 +142,7 @@ export function useGame(roomId: string) {
       socket.off('game_over', handleGameOver);
       socket.off('player_left', handlePlayerLeft);
       socket.off('hint_result', handleHintResult);
+      socket.off('room_reconnected', handleRoomReconnected);
     };
   }, []);
 
@@ -125,9 +156,9 @@ export function useGame(roomId: string) {
       }
 
       if (e.key === 'Enter') {
-        if (currentGuess.length !== WORD_LENGTH) return
+        if (currentGuess.length !== WORD_LENGTH) return;
         setIsSubmitting(true);
-        socket.emit('submit_guess', { roomId,playerId: getPlayerId(), guess: currentGuess.join('') });
+        socket.emit('submit_guess', { roomId, guess: currentGuess.join('') });
         return;
       }
 
@@ -141,7 +172,7 @@ export function useGame(roomId: string) {
   }, [currentGuess, isSubmitting, outcome, playerStatus, roomId]);
 
   const requestHint = useCallback((hint: HintKind) => {
-    socket.emit('request_hint', { roomId, playerId: getPlayerId(), hint });
+    socket.emit('request_hint', { roomId, hint });
   }, [roomId]);
 
   return {

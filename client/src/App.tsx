@@ -4,11 +4,19 @@ import type { GameMode } from './types/game';
 import { Home } from './components/Home';
 import { SoloGame } from './components/SoloGame';
 import { MultiplayerLobby } from './components/MultiplayerLobby';
+import { clearSavedRoom, getSavedRoom } from './lib/room';
 
 function App() {
-  const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  // A refresh lands back on the screen that owns the saved room, so the
+  // reconnect handshake can run without the player navigating there by hand.
+  const [gameMode, setGameMode] = useState<GameMode | null>(
+    () => getSavedRoom()?.mode ?? null
+  );
 
-  const backToHome = useCallback(() => setGameMode(null), []);
+  const backToHome = useCallback(() => {
+    clearSavedRoom();
+    setGameMode(null);
+  }, []);
 
   if (gameMode === 'solo') {
     return <SoloGame onExit={backToHome} />;

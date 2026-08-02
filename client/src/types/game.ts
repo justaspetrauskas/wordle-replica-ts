@@ -11,7 +11,10 @@ export type RoomMode = Exclude<GameMode, 'ai'>;
 
 export type LobbyView = 'menu' | 'create' | 'join';
 
-export type RoomStatus = 'idle' | 'pending' | 'waiting' | 'playing';
+export type RoomStatus = 'idle' | 'pending' | 'waiting' | 'playing' | 'finished';
+
+/** The room lifecycle as the server reports it. */
+export type ServerRoomStatus = 'waiting' | 'playing' | 'finished';
 
 export type PlayerStatus = 'playing' | 'won' | 'lost';
 
@@ -36,4 +39,18 @@ export interface FlashHint {
   top: number;
   left: number;
   word: string;
+}
+
+/** Everything the server sends back to rebuild the UI after a refresh. */
+export interface RoomReconnectedPayload {
+  roomId: string;
+  guesses: SubmittedGuess[];
+  status: PlayerStatus;
+  helpUsage: HelpUsage;
+  /** Colours only — never the opponent's letters. */
+  opponentRows: LetterState[][];
+  opponentStatus: PlayerStatus | null;
+  roomStatus: ServerRoomStatus;
+  /** Only set once the round is over. */
+  solution: string | null;
 }

@@ -1,6 +1,7 @@
 const RANDOM_WORDS_API_URL = 'https://random-words-api.kushcreates.com/api';
 const WORD_LENGTH = 5;
 const WORD_COUNT = 100;
+const CATEGORY = 'wordle';
 
 
 export type LanguageCode = "en" | "es" | "da" | "lt";
@@ -14,7 +15,7 @@ export async function fetchWords(
 ): Promise<string[]> {
   const query = new URLSearchParams({
     language,
-    category: "wordle",
+    category: CATEGORY,
     length: String(WORD_LENGTH),
     words: String(WORD_COUNT),
   });

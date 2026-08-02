@@ -18,6 +18,7 @@ export type HelpUsage = {
 
 export type Player = {
   id: string;
+  socketId: string;        // current Socket.IO connection
   guesses: SubmittedGuess[];
   status: PlayerStatus;
   helpUsage: HelpUsage;
@@ -85,9 +86,10 @@ export function isRoomFull(room: Room): boolean {
   return room.mode === "solo" || room.players.length >= MAX_PLAYERS;
 }
 
-export function addPlayer(room: Room, playerId: string): Player {
+export function addPlayer(room: Room, playerId: string, socketId: string): Player {
   const player: Player = {
     id: playerId,
+    socketId,
     guesses: [],
     status: "playing",
     helpUsage: {
@@ -104,6 +106,14 @@ export function addPlayer(room: Room, playerId: string): Player {
 
 export function getPlayer(room: Room, playerId: string) {
   return room.players.find((player) => player.id === playerId);
+}
+
+// Disconnected players hold an empty socketId, so an empty lookup must never
+// match one of them.
+export function getPlayerBySocket(room: Room, socketId: string) {
+  if (!socketId) return undefined;
+
+  return room.players.find((player) => player.socketId === socketId);
 }
 
 // Drops the player from every room they were in and returns the rooms that are
@@ -127,4 +137,23 @@ export function removePlayer(playerId: string): Room[] {
   }
 
   return affectedRooms;
+}
+
+export function disconnectPlayer(socketId: string) {
+  for (const room of rooms.values()) {
+    const player = room.players.find(
+      (entry) => entry.socketId === socketId
+    );
+
+    if (!player) continue;
+
+    player.socketId = "";
+
+    return {
+      room,
+      player,
+    };
+  }
+
+  return undefined;
 }

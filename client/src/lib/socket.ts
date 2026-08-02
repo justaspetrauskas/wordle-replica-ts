@@ -6,6 +6,7 @@ import type {
   LetterState,
   PlayerStatus,
   RoomMode,
+  RoomReconnectedPayload,
   SubmittedGuess,
 } from '../types/game';
 
@@ -28,13 +29,17 @@ interface ServerToClientEvents {
     message?: string;
     word?: string;
   }) => void;
+  room_reconnected: (payload: RoomReconnectedPayload) => void;
 }
 
+// The server authenticates guesses and hints by the socket the request arrived
+// on, so no playerId is sent with them.
 interface ClientToServerEvents {
   create_room: (payload: { language: LanguageCode; mode: RoomMode; playerId: string }) => void;
   join_room: (payload: { roomId: string; playerId: string }) => void;
-  submit_guess: (payload: { roomId: string; playerId: string; guess: string }) => void;
-  request_hint: (payload: { roomId: string; playerId: string; hint: HintKind }) => void;
+  submit_guess: (payload: { roomId: string; guess: string }) => void;
+  request_hint: (payload: { roomId: string; hint: HintKind }) => void;
+  reconnect_room: (payload: { roomId: string; playerId: string }) => void;
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';

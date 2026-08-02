@@ -11,21 +11,29 @@ interface MultiplayerLobbyProps {
 
 export function MultiplayerLobby({ onExit }: MultiplayerLobbyProps) {
   const [view, setView] = useState<LobbyView>('menu');
-  const { roomId, status, error, createRoom, joinRoom } = useRoom();
+  const { roomId, status, error, createRoom, joinRoom, leaveRoom } =
+    useRoom('multiplayer');
 
-  const backToLobby = () => setView('menu');
+  const backToLobby = () => {
+    leaveRoom();
+    setView('menu');
+  };
 
-  if (status === 'playing' && roomId) {
+  // 'finished' keeps the final board up, so a refresh after the round still
+  // shows the result instead of dropping back to the menu.
+  if (roomId && (status === 'playing' || status === 'finished')) {
     return <Game key={roomId} roomId={roomId} mode="multiplayer" onExit={onExit} />;
   }
 
-  if (view === 'create') {
+  // Reached either by pressing "Create game" or by refreshing while the room
+  // is still waiting for an opponent — both need the room code on screen.
+  if (view === 'create' || (roomId && status === 'waiting')) {
     return (
       <CreateGame
         roomId={roomId}
         status={status}
         error={error}
-        onCreate={(language) => createRoom(language, 'multiplayer')}
+        onCreate={createRoom}
         onBack={backToLobby}
       />
     );

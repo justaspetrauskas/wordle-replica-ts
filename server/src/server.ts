@@ -4,12 +4,18 @@ import cors from "@fastify/cors";
 import { setupSocket } from "./socket.js";
 
 
+// Vite picks the first free port from 5173, so both are allowed. Set
+// CLIENT_ORIGIN to override for any other host.
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(",").map((origin) => origin.trim())
+  : ["http://localhost:5173", "http://localhost:5174"];
+
 const app = Fastify({
   logger: true,
 });
 
 await app.register(cors, {
-  origin: "http://localhost:5174",
+  origin: CLIENT_ORIGIN,
 });
 
 app.get("/health", async () => {
@@ -33,7 +39,7 @@ const start = async () => {
 
     const io = new Server(app.server, {
       cors: {
-        origin: "http://localhost:5174",
+        origin: CLIENT_ORIGIN,
       },
     });
 
