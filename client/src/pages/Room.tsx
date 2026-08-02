@@ -1,0 +1,118 @@
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { MiniBoard } from '../components/Board';
+import { PageShell, RoomCode, SetupSummary, TopBar } from '../components/Chrome';
+import { PlaySurface } from '../components/PlaySurface';
+import { useRoom } from '../hooks/useRoom';
+
+export function Room() {
+  const { code = '' } = useParams();
+  const navigate = useNavigate();
+  const normalized = code.toUpperCase();
+  const [copied, setCopied] = useState(false);
+
+  const {
+    roomId,
+    status,
+    error,
+    language,
+    category,
+    restored,
+    restoreCount,
+    leaveRoom,
+  } = useRoom('multiplayer', normalized);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId || normalized);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* clipboard unavailable — the code is on screen anyway */
+    }
+  };
+
+  const leave = () => {
+    leaveRoom();
+    navigate('/?mode=together');
+  };
+
+  if (error) {
+    return (
+      <PageShell>
+        <TopBar backTo="/?mode=together" />
+        <p className="mt-16 font-display text-3xl">This room is gone.</p>
+        <p className="mt-3 text-sm text-mute" role="alert">
+          {error}
+        </p>
+        <Link
+          to="/?mode=together"
+          className="mt-4 inline-block font-accent text-coral-ink underline underline-offset-4"
+        >
+          Back to setup
+        </Link>
+      </PageShell>
+    );
+  }
+
+  if (!roomId || status === 'idle' || status === 'pending') {
+    return (
+      <PageShell>
+        <TopBar backTo="/?mode=together" />
+        <p className="mt-16 font-display text-xl text-mute">Opening the room…</p>
+      </PageShell>
+    );
+  }
+
+  const waiting = status === 'waiting';
+
+  return (
+    <PlaySurface
+      key={`${roomId}:${restoreCount}`}
+      roomId={roomId}
+      mode="multiplayer"
+      language={language}
+      category={category}
+      restored={restored}
+      waiting={waiting}
+      backTo="/?mode=together"
+      headerCenter={<RoomCode code={roomId} copied={copied} onCopy={copyCode} />}
+      headerRight={
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SetupSummary mode="together" language={language} category={category} />
+          <button
+            type="button"
+            onClick={leave}
+            className="shrink-0 rounded-full border border-ink/20 bg-washi/80 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-ink transition hover:border-coral-ink hover:text-coral-ink"
+          >
+            Leave
+          </button>
+        </div>
+      }
+      aside={({ opponentRows, guessCount }) => (
+        <>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-mute">Room</p>
+          <p className="mt-2 font-accent text-lg font-semibold tracking-[0.2em]">{roomId}</p>
+          <p className="mt-1 text-xs text-mute">You · {guessCount}/6</p>
+
+          <div className="mt-8">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-mute">Opponent</p>
+            {waiting ? (
+              <p className="mt-3 text-sm text-mute">
+                Share the code above to start. Their board appears here.
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-mute">{opponentRows.length}/6</p>
+                <div className="mt-3">
+                  {/* Colours only — the server never sends their letters. */}
+                  <MiniBoard rows={opponentRows} />
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    />
+  );
+}

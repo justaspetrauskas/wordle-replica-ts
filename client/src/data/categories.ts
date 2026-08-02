@@ -1,4 +1,4 @@
-import type { LanguageCode } from '../types/game';
+import type { CategoryId, LanguageCode } from '../types/game';
 
 /**
  * The languages the word API actually serves. It answers with HTTP 200 and a
@@ -8,17 +8,15 @@ export const PLAYABLE_LANGUAGES = ['en', 'es'] as const satisfies readonly Langu
 
 export type PlayableLanguage = (typeof PLAYABLE_LANGUAGES)[number];
 
-export type CategoryId =
-  | 'misc'
-  | 'animals'
-  | 'countries'
-  | 'food'
-  | 'birds'
-  | 'science'
-  | 'history';
+/**
+ * Everything the picker shows. `CategoryId` (from the shared types) is the
+ * narrower set the server will actually accept — the rest are displayed as
+ * "soon" so the shape of the game is visible without being selectable.
+ */
+export type CategoryKey = CategoryId | 'food' | 'birds' | 'science' | 'history';
 
 export interface CategoryMeta {
-  id: CategoryId;
+  id: CategoryKey;
   label: Record<PlayableLanguage, string>;
   kicker: string;
   note: Record<PlayableLanguage, string>;
@@ -117,8 +115,9 @@ export function isPlayableLanguage(value: unknown): value is PlayableLanguage {
   return PLAYABLE_LANGUAGES.includes(value as PlayableLanguage);
 }
 
+/** Narrows to a category the server will accept, not merely one we display. */
 export function isCategoryId(value: unknown): value is CategoryId {
-  return CATEGORIES.some((category) => category.id === value);
+  return value === 'misc' || value === 'animals' || value === 'countries';
 }
 
 /** Categories the API can actually serve a word for in this language. */
@@ -127,7 +126,7 @@ export function categoriesFor(language: PlayableLanguage): CategoryMeta[] {
 }
 
 export function isCategoryAvailable(
-  id: CategoryId,
+  id: CategoryKey,
   language: PlayableLanguage
 ): boolean {
   return getCategoryMeta(id).availableIn.includes(language);
@@ -138,12 +137,16 @@ export function isCategoryAvailable(
  * with Misc selected has to land somewhere real.
  */
 export function resolveCategory(
-  preferred: CategoryId,
+  preferred: CategoryKey,
   language: PlayableLanguage
 ): CategoryId {
-  if (isCategoryAvailable(preferred, language)) return preferred;
+  if (isCategoryAvailable(preferred, language) && isCategoryId(preferred)) {
+    return preferred;
+  }
 
-  return categoriesFor(language)[0]?.id ?? 'animals';
+  const first = categoriesFor(language)[0]?.id;
+
+  return isCategoryId(first) ? first : 'animals';
 }
 
 export const KEYBOARD: Record<PlayableLanguage, string[][]> = {

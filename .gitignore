@@ -27,3 +27,6 @@ client/GUIDE.md
 .vercel
 .github/copilot-instructions.md
 .github/agents/*
+
+# TypeScript incremental build info
+*.tsbuildinfo

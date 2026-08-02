@@ -2,7 +2,13 @@ export type LetterState = 'correct' | 'present' | 'absent' | 'empty';
 
 export type GameStatus = 'playing' | 'ended';
 
-export type LanguageCode = 'en' | 'es' | 'da' | 'lt';
+/**
+ * Only the languages the word API serves. It answers HTTP 200 with a `null`
+ * body for Danish and Lithuanian, so offering them only produced failed rooms.
+ */
+export type LanguageCode = 'en' | 'es';
+
+export type CategoryId = 'misc' | 'animals' | 'countries';
 
 export type GameMode = 'solo' | 'multiplayer' | 'ai';
 
@@ -51,6 +57,7 @@ export interface FlashHint {
 export interface RoomReconnectedPayload {
   roomId: string;
   language: LanguageCode;
+  category: CategoryId;
   guesses: SubmittedGuess[];
   status: PlayerStatus;
   helpUsage: HelpUsage;

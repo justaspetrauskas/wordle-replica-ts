@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, Copy } from 'lucide-react';
-import { getCategoryMeta, type CategoryId, type PlayableLanguage } from '../data/categories';
+import { getCategoryMeta, type CategoryKey, type PlayableLanguage } from '../data/categories';
 
 export function TopBar({
   backTo,
@@ -44,12 +44,14 @@ export function SetupSummary({
 }: {
   mode?: 'solo' | 'together';
   language: PlayableLanguage;
-  category: CategoryId;
+  category: CategoryKey;
 }) {
   const meta = getCategoryMeta(category);
 
   return (
-    <p className="truncate text-right text-[11px] uppercase tracking-[0.12em] text-mute">
+    // Hidden on small screens: the room code and Leave button have to fit the
+    // same row, and this is the only part of it that is purely informational.
+    <p className="hidden truncate text-right text-[11px] uppercase tracking-[0.12em] text-mute sm:block">
       <span className="text-ink">
         {mode === 'solo' ? 'Solo' : mode === 'together' ? 'Together' : ''}
       </span>
@@ -72,11 +74,12 @@ export function RoomCode({
     <button
       type="button"
       onClick={onCopy}
-      className="inline-flex items-center gap-2 rounded-full border border-ink/15 bg-washi/80 px-3 py-1"
+      className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-washi/80 px-2.5 py-1 sm:gap-2 sm:px-3"
       aria-label={copied ? 'Room code copied' : 'Copy room code'}
     >
-      <span className="text-[10px] uppercase tracking-[0.18em] text-mute">Code</span>
-      <span className="font-accent text-sm font-semibold tracking-[0.2em]">{code}</span>
+      {/* The label is the first thing to go when the row gets tight. */}
+      <span className="hidden text-[10px] uppercase tracking-[0.18em] text-mute sm:inline">Code</span>
+      <span className="font-accent text-sm font-semibold tracking-[0.14em] sm:tracking-[0.2em]">{code}</span>
       {copied ? <Check size={13} /> : <Copy size={13} className="text-mute" />}
     </button>
   );

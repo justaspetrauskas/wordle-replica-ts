@@ -130,13 +130,16 @@ export function useGame(
     };
 
     const handleHintResult = ({
+      hint,
       helpUsage: usage,
       message: hintMessage,
       word,
-    }: { helpUsage: HelpUsage; message?: string; word?: string }) => {
+    }: { hint: HintKind; helpUsage: HelpUsage; message?: string; word?: string }) => {
       setHelpUsage(usage);
 
-      if (word) {
+      // Keyed on the hint kind, not on whether `word` is present: a word
+      // suggestion carries one too, and must not be flashed as the solution.
+      if (hint === 'flashSolution' && word) {
         setFlashHint({
           visible: true,
           top: Math.floor(Math.random() * 80) + 10,

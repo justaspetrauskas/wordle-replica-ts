@@ -33,6 +33,19 @@ export function CategoryWash({ category }: { category?: string }) {
         <path fill="#efe6d6" opacity="0.88" d="M0 78 C28 72 48 86 70 80 C84 76 94 88 100 84 V100 H0 Z" />
         <path fill="#efe6d6" opacity="0.72" d="M62 0 C70 8 66 14 78 18 C90 23 86 8 100 12 V0 Z" />
       </svg>
+
+      {/*
+        The torn-paper mask alone was cut for one fixed layout and leaves the
+        board sitting on busy artwork at wide viewports. This clears the middle
+        where the grid lives while leaving the art readable around the edges.
+      */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 58% 66% at 50% 52%, rgba(239,230,214,0.95) 0%, rgba(239,230,214,0.88) 40%, rgba(239,230,214,0.35) 72%, rgba(239,230,214,0) 100%)',
+        }}
+      />
     </div>
   );
 }

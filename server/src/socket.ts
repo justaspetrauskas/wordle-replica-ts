@@ -10,7 +10,15 @@ import {
   type GameMode,
   type HelpUsage,
 } from "./rooms.js";
-import { fetchWords, type LanguageCode } from "./words.js";
+import {
+  fetchWords,
+  isAvailable,
+  isCategoryId,
+  isLanguageCode,
+  WordSourceError,
+  type CategoryId,
+  type LanguageCode,
+} from "./words.js";
 import {
   MAX_GUESSES,
   WORD_LENGTH,
@@ -24,6 +32,7 @@ type HintKind = keyof HelpUsage;
 
 type CreateRoomPayload = {
   language?: LanguageCode;
+  category?: CategoryId;
   mode?: GameMode;
   playerId?: string;
 };
@@ -91,6 +100,7 @@ export function setupSocket(io: Server) {
       socket.emit("room_reconnected", {
         roomId: room.id,
         language: room.language,
+        category: room.category,
         guesses: player.guesses,
         status: player.status,
         helpUsage: player.helpUsage,
@@ -109,13 +119,30 @@ export function setupSocket(io: Server) {
 
     socket.on("create_room", async (payload: CreateRoomPayload) => {
       const language = payload?.language;
+      const category = payload?.category;
       const playerId = payload?.playerId;
       const mode: GameMode =
         payload?.mode === "solo" ? "solo" : "multiplayer";
 
-      if (!language) {
+      if (!isLanguageCode(language)) {
         socket.emit("room_error", {
           message: "Pick a language first",
+        });
+
+        return;
+      }
+
+      if (!isCategoryId(category)) {
+        socket.emit("room_error", {
+          message: "Pick a category first",
+        });
+
+        return;
+      }
+
+      if (!isAvailable(language, category)) {
+        socket.emit("room_error", {
+          message: "That category is not available in this language",
         });
 
         return;
@@ -130,15 +157,11 @@ export function setupSocket(io: Server) {
       }
 
       try {
-        const words = await fetchWords(language);
-
-        if (words.length === 0) {
-          throw new Error("No words returned from the word API");
-        }
+        const words = await fetchWords(language, category);
 
         const solution = words[Math.floor(Math.random() * words.length)];
 
-        const room = createRoom(solution, words, mode, language);
+        const room = createRoom(solution, words, mode, language, category);
 
         addPlayer(room, playerId, socket.id);
 
@@ -148,17 +171,25 @@ export function setupSocket(io: Server) {
           roomId: room.id,
         });
 
-        console.log(`Room created: ${room.id} (${mode})`);
+        console.log(
+          `Room created: ${room.id} (${mode}, ${language}/${category})`
+        );
 
         if (mode === "solo") {
           room.status = "playing";
-          socket.emit("game_started", { language: room.language });
+          socket.emit("game_started", {
+            language: room.language,
+            category: room.category,
+          });
         }
       } catch (error) {
         console.error("Failed to create room:", error);
 
         socket.emit("room_error", {
-          message: "Could not create game",
+          message:
+            error instanceof WordSourceError
+              ? "No words available for that pick — try another category."
+              : "Could not create game",
         });
       }
     });
@@ -217,7 +248,10 @@ export function setupSocket(io: Server) {
         room.status = "playing";
 
         // The joining player never chose a language, so the room reports it.
-        io.to(room.id).emit("game_started", { language: room.language });
+        io.to(room.id).emit("game_started", {
+          language: room.language,
+          category: room.category,
+        });
 
         console.log(`Game started in room ${room.id}`);
       }
@@ -340,6 +374,9 @@ export function setupSocket(io: Server) {
         socket.emit("hint_result", {
           hint,
           helpUsage: player.helpUsage,
+          // The word is sent alongside the sentence so the client can drop it
+          // straight into the row instead of parsing it back out of prose.
+          word: suggestion ? suggestion.toUpperCase() : undefined,
           message: suggestion
             ? `Try this word: ${suggestion.toUpperCase()}`
             : "No candidate word found for this hint.",

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
+  CategoryId,
   LanguageCode,
   RoomMode,
   RoomReconnectedPayload,
@@ -13,18 +14,27 @@ import { clearSavedRoom, getSavedRoom, saveRoom } from '../lib/room';
  * Owns the connection and the room the player belongs to. `mode` scopes the
  * hook to one kind of room: a saved room is only resumed by the screen that
  * created it.
+ *
+ * `targetRoomId` is the code from a `/room/:code` URL. It takes priority over
+ * the saved room, which is what makes a room link shareable.
  */
-export function useRoom(mode: RoomMode) {
+export function useRoom(mode: RoomMode, targetRoomId?: string) {
   const [roomId, setRoomId] = useState<string>(
     () => {
+      if (targetRoomId) return targetRoomId;
+
       const saved = getSavedRoom();
 
       return saved?.mode === mode ? saved.roomId : '';
     }
   );
+  // A failed reconnect falls back to joining, but only once — otherwise a room
+  // that is genuinely gone would loop between the two.
+  const triedJoin = useRef<boolean>(false);
   const [status, setStatus] = useState<RoomStatus>('idle');
   const [error, setError] = useState<string>('');
   const [language, setLanguage] = useState<LanguageCode>('en');
+  const [category, setCategory] = useState<CategoryId>('misc');
   // <Game> only mounts once status becomes 'playing', which happens *because*
   // of room_reconnected — so a listener inside useGame would be registered too
   // late to ever see it. The payload is held here and passed down instead.
@@ -35,6 +45,20 @@ export function useRoom(mode: RoomMode) {
   useEffect(() => {
     const handleConnect = () => {
       const saved = getSavedRoom();
+
+      if (targetRoomId) {
+        // Reconnecting and joining are different requests, and the server
+        // rejects a second join from a player already seated. Whether this
+        // player has been here before is what decides which one to send.
+        const isReturning = saved?.roomId === targetRoomId && saved.mode === mode;
+
+        socket.emit(isReturning ? 'reconnect_room' : 'join_room', {
+          roomId: targetRoomId,
+          playerId: getPlayerId(),
+        });
+
+        return;
+      }
 
       // Someone else's room (a solo screen must not resume a multiplayer game).
       if (!saved || saved.mode !== mode) return;
@@ -57,6 +81,7 @@ export function useRoom(mode: RoomMode) {
       saveRoom(payload.roomId, mode);
       setRoomId(payload.roomId);
       setLanguage(payload.language);
+      setCategory(payload.category);
       setRestored(payload);
       setRestoreCount((count) => count + 1);
       setError('');
@@ -67,15 +92,37 @@ export function useRoom(mode: RoomMode) {
       // The saved code is stale (rooms live in server memory), so drop it
       // instead of retrying it on every reconnect.
       clearSavedRoom();
+
+      // Arriving on a room link with a stale save for the same code: the
+      // reconnect was refused, but joining as a newcomer may still work.
+      if (targetRoomId && !triedJoin.current) {
+        triedJoin.current = true;
+
+        socket.emit('join_room', {
+          roomId: targetRoomId,
+          playerId: getPlayerId(),
+        });
+
+        return;
+      }
+
       setRoomId('');
       setStatus('idle');
       setRestored(null);
       setError(message);
     };
 
-    const handleGameStarted = ({ language: roomLanguage }: { language: LanguageCode }) => {
+    const handleGameStarted = ({
+      language: roomLanguage,
+      category: roomCategory,
+    }: { language: LanguageCode; category: CategoryId }) => {
+      // A player who arrived on a room link has not saved it yet; without this
+      // a refresh would try to join a room they are already sitting in.
+      if (targetRoomId) saveRoom(targetRoomId, mode);
+
       setError('');
       setLanguage(roomLanguage);
+      setCategory(roomCategory);
       setStatus('playing');
       setRestored(null);
     };
@@ -110,15 +157,16 @@ export function useRoom(mode: RoomMode) {
 
       socket.disconnect();
     };
-  }, [mode]);
+  }, [mode, targetRoomId]);
 
   const createRoom = useCallback(
-    (language: LanguageCode) => {
+    (language: LanguageCode, category: CategoryId) => {
       setError('');
       setStatus('pending');
 
       socket.emit('create_room', {
         language,
+        category,
         mode,
         playerId: getPlayerId(),
       });
@@ -163,6 +211,7 @@ export function useRoom(mode: RoomMode) {
     status,
     error,
     language,
+    category,
     restored,
     restoreCount,
     createRoom,

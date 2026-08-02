@@ -29,7 +29,9 @@ body,
 }
 
 :root {
-  --cutout-opacity: 0.62;
+  /* Backed off from the prototype's 0.62: the board has to stay legible on
+     top of the artwork, and the scrim in CategoryWash does the rest. */
+  --cutout-opacity: 0.5;
 }
 
 body {

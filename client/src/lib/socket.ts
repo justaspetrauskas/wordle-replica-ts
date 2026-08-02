@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  CategoryId,
   HelpUsage,
   HintKind,
   LanguageCode,
@@ -13,7 +14,7 @@ import type {
 interface ServerToClientEvents {
   room_created: (payload: { roomId: string }) => void;
   room_error: (payload: { message: string }) => void;
-  game_started: (payload: { language: LanguageCode }) => void;
+  game_started: (payload: { language: LanguageCode; category: CategoryId }) => void;
   guess_result: (payload: { guesses: SubmittedGuess[]; status: PlayerStatus }) => void;
   invalid_guess: (payload: { message: string }) => void;
   // No playerId: it is the opponent's persistent identity and would be enough
@@ -36,7 +37,12 @@ interface ServerToClientEvents {
 // The server authenticates guesses and hints by the socket the request arrived
 // on, so no playerId is sent with them.
 interface ClientToServerEvents {
-  create_room: (payload: { language: LanguageCode; mode: RoomMode; playerId: string }) => void;
+  create_room: (payload: {
+    language: LanguageCode;
+    category: CategoryId;
+    mode: RoomMode;
+    playerId: string;
+  }) => void;
   join_room: (payload: { roomId: string; playerId: string }) => void;
   submit_guess: (payload: { roomId: string; guess: string }) => void;
   request_hint: (payload: { roomId: string; hint: HintKind }) => void;
