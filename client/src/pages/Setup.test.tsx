@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Setup } from './Setup';
+import { getSavedRoom, saveRoom } from '../lib/room';
 
 const emit = vi.fn();
 
@@ -141,6 +142,27 @@ describe('Setup', () => {
 
       // Solo rooms are created by the play screen, from the query string.
       expect(emit).not.toHaveBeenCalledWith('create_room', expect.anything());
+    });
+
+    it('lets go of the saved room so the play screen deals a new word', async () => {
+      const user = userEvent.setup();
+      saveRoom('OLDRM1', 'solo');
+      renderSetup();
+
+      await user.click(screen.getByRole('button', { name: 'Begin' }));
+
+      // A room outlives its round on the server, so a kept save would resume
+      // the finished board instead of starting the game the player asked for.
+      expect(getSavedRoom()).toBeNull();
+    });
+
+    it('leaves the saved room alone until Begin is pressed', () => {
+      saveRoom('OLDRM1', 'solo');
+      renderSetup();
+
+      // Only starting a game abandons it — merely opening setup (the back
+      // arrow out of a game in progress) must still be recoverable.
+      expect(getSavedRoom()).toEqual({ roomId: 'OLDRM1', mode: 'solo' });
     });
   });
 

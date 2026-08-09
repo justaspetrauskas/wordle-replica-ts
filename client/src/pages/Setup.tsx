@@ -14,6 +14,7 @@ import {
   type PlayableLanguage,
 } from '../data/categories';
 import type { CategoryId } from '../types/game';
+import { clearSavedRoom } from '../lib/room';
 import { ROOM_CODE_LENGTH } from '../constants';
 
 type PlayMode = 'solo' | 'together';
@@ -68,6 +69,12 @@ export function Setup() {
 
   const go = () => {
     if (mode === 'solo') {
+      // Pressing Begin is a deliberate new game, and it is the only signal that
+      // says so: the play screen sees the same URL whether the player arrived
+      // here or refreshed mid-round. Letting the saved room go before leaving
+      // is what stops it resuming — a finished board would otherwise come
+      // straight back, since the room outlives the round on the server.
+      clearSavedRoom();
       navigate(`/play?lang=${language}&cat=${effectiveCategory}`);
       return;
     }
