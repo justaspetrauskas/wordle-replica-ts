@@ -89,7 +89,7 @@ export function Room() {
           </button>
         </div>
       }
-      aside={({ opponentRows, guessCount }) => (
+      aside={({ opponentRows, opponentLeft, guessCount }) => (
         <>
           <p className="text-[11px] uppercase tracking-[0.18em] text-mute">Room</p>
           <p className="mt-2 font-accent text-lg font-semibold tracking-[0.2em]">{roomId}</p>
@@ -103,7 +103,13 @@ export function Room() {
               </p>
             ) : (
               <>
-                <p className="mt-1 text-xs text-mute">{opponentRows.length}/6</p>
+                {opponentLeft ? (
+                  <p className="mt-2 text-sm text-coral-ink">
+                    Left the game. Finish the word on your own.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-mute">{opponentRows.length}/6</p>
+                )}
                 <div className="mt-3">
                   {/* Colours only — the server never sends their letters. */}
                   <MiniBoard rows={opponentRows} />

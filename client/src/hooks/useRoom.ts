@@ -176,12 +176,14 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
 
   /** Give up the current room so a refresh no longer resumes it. */
   const leaveRoom = useCallback(() => {
+    if (roomId) socket.emit('leave_room', { roomId });
+
     clearSavedRoom();
     setRoomId('');
     setStatus('idle');
     setError('');
     setRestored(null);
-  }, []);
+  }, [roomId]);
 
   return {
     roomId,

@@ -17,6 +17,7 @@ import { Keyboard } from './Keyboard';
 
 export interface GameView {
   opponentRows: LetterState[][];
+  opponentLeft: boolean;
   playerStatus: PlayerStatus;
   guessCount: number;
 }
@@ -63,6 +64,7 @@ export function PlaySurface({
     currentGuess,
     playerStatus,
     opponentRows,
+    opponentLeft,
     helpUsage,
     flashHint,
     message,
@@ -150,7 +152,12 @@ export function PlaySurface({
           {/* The centre scrim does not reach out here, so the panel carries its
               own paper backing or the opponent's bars vanish into the art. */}
           <aside className="hidden rounded-2xl border-l border-ink/10 bg-paper/75 p-5 backdrop-blur-[1px] lg:block">
-            {aside({ opponentRows, playerStatus, guessCount: guesses.length })}
+            {aside({
+              opponentRows,
+              opponentLeft,
+              playerStatus,
+              guessCount: guesses.length,
+            })}
           </aside>
         </div>
       ) : (

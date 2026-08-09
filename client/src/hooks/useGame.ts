@@ -71,6 +71,7 @@ export function useGame(
   const [opponentRows, setOpponentRows] = useState<LetterState[][]>(
     () => restore?.opponentRows ?? []
   );
+  const [opponentLeft, setOpponentLeft] = useState<boolean>(false);
   const [helpUsage, setHelpUsage] = useState<HelpUsage>(
     () => restore?.helpUsage ?? INITIAL_HELP_USAGE
   );
@@ -134,6 +135,7 @@ export function useGame(
     };
 
     const handlePlayerLeft = () => {
+      setOpponentLeft(true);
       setMessage('Your opponent left the game.');
     };
 
@@ -267,6 +269,7 @@ export function useGame(
     currentGuess,
     playerStatus,
     opponentRows,
+    opponentLeft,
     helpUsage,
     flashHint,
     message,

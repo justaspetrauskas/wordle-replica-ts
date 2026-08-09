@@ -24,7 +24,7 @@ interface ServerToClientEvents {
     status: PlayerStatus;
   }) => void;
   game_over: (payload: { winnerId: string | null; solution: string }) => void;
-  player_left: (payload: { playerId: string }) => void;
+  player_left: () => void;
   hint_result: (payload: {
     hint: HintKind;
     helpUsage: HelpUsage;
@@ -44,6 +44,7 @@ interface ClientToServerEvents {
     playerId: string;
   }) => void;
   join_room: (payload: { roomId: string; playerId: string }) => void;
+  leave_room: (payload: { roomId: string }) => void;
   submit_guess: (payload: { roomId: string; guess: string }) => void;
   request_hint: (payload: { roomId: string; hint: HintKind }) => void;
   reconnect_room: (payload: { roomId: string; playerId: string }) => void;

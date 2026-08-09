@@ -7,6 +7,8 @@ import {
   getPlayerBySocket,
   getRoom,
   isRoomFull,
+  keepSeat,
+  removePlayer,
   type GameMode,
   type HelpUsage,
 } from "./rooms.js";
@@ -54,8 +56,20 @@ type ReconnectRoomPayload = {
   playerId?: string;
 };
 
+type LeaveRoomPayload = {
+  roomId?: string;
+};
+
 
 const HINT_KINDS: HintKind[] = ["revealLetter", "suggestWord", "flashSolution"];
+
+const RECONNECT_GRACE_MS = 15_000;
+
+function evictPlayer(io: Server, playerId: string) {
+  for (const room of removePlayer(playerId)) {
+    io.to(room.id).emit("player_left");
+  }
+}
 
 export function setupSocket(io: Server) {
   io.on("connection", (socket) => {
@@ -87,6 +101,8 @@ export function setupSocket(io: Server) {
 
       // Attach the new socket connection to the existing player.
       player.socketId = socket.id;
+
+      keepSeat(player);
 
       // Rejoin the Socket.IO room.
       socket.join(room.id);
@@ -392,6 +408,18 @@ export function setupSocket(io: Server) {
       });
     });
 
+    socket.on("leave_room", (payload: LeaveRoomPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room ? getPlayerBySocket(room, socket.id) : undefined;
+
+      if (!room || !player) return;
+
+      socket.leave(room.id);
+      evictPlayer(io, player.id);
+
+      console.log(`Player ${player.id} left room ${room.id}`);
+    });
+
     socket.on("disconnect", () => {
       console.log("Player disconnected:", socket.id);
 
@@ -399,9 +427,20 @@ export function setupSocket(io: Server) {
 
       if (!result) return;
 
+      const { room, player } = result;
+
       console.log(
-        `Player ${result.player.id} disconnected from room ${result.room.id}`
+        `Player ${player.id} disconnected from room ${room.id}`
       );
+
+      player.leaveTimer = setTimeout(() => {
+        player.leaveTimer = undefined;
+        evictPlayer(io, player.id);
+
+        console.log(`Player ${player.id} gave up their seat in room ${room.id}`);
+      }, RECONNECT_GRACE_MS);
+
+      player.leaveTimer.unref();
     });
   });
 }

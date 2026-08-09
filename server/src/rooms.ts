@@ -23,6 +23,7 @@ export type Player = {
   guesses: SubmittedGuess[];
   status: PlayerStatus;
   helpUsage: HelpUsage;
+  leaveTimer?: ReturnType<typeof setTimeout>;
 };
 
 export type Room = {
@@ -117,6 +118,13 @@ export function getPlayer(room: Room, playerId: string) {
   return room.players.find((player) => player.id === playerId);
 }
 
+export function keepSeat(player: Player) {
+  if (!player.leaveTimer) return;
+
+  clearTimeout(player.leaveTimer);
+  player.leaveTimer = undefined;
+}
+
 // Disconnected players hold an empty socketId, so an empty lookup must never
 // match one of them.
 export function getPlayerBySocket(room: Room, socketId: string) {
@@ -134,6 +142,8 @@ export function removePlayer(playerId: string): Room[] {
     const index = room.players.findIndex((player) => player.id === playerId);
 
     if (index === -1) continue;
+
+    keepSeat(room.players[index]);
 
     room.players.splice(index, 1);
 
