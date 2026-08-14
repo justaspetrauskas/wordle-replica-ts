@@ -60,6 +60,18 @@ export function pickHintLetter(
   return { index, letter: solution[index] };
 }
 
+// `previous` is skipped so a rematch never deals the same word twice in a row.
+// A single-word pool has nothing else to offer, so it falls back to that word.
+export function pickSolution(wordPool: string[], previous?: string): string {
+  const fresh = previous
+    ? wordPool.filter((word) => word !== previous)
+    : wordPool;
+
+  const pool = fresh.length > 0 ? fresh : wordPool;
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function pickSuggestion(
   solution: string,
   wordPool: string[]

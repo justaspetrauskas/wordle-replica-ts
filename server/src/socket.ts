@@ -6,14 +6,16 @@ import {
   getPlayer,
   getPlayerBySocket,
   getRoom,
+  isRematchReady,
   isRoomFull,
   keepSeat,
   removePlayer,
+  resetRoom,
   type GameMode,
   type HelpUsage,
 } from "./rooms.js";
 import {
-  fetchWords,
+  getWords,
   isAvailable,
   isCategoryId,
   isLanguageCode,
@@ -27,6 +29,7 @@ import {
   getLetterStates,
   isValidGuess,
   pickHintLetter,
+  pickSolution,
   pickSuggestion,
 } from "./game.js";
 
@@ -57,6 +60,10 @@ type ReconnectRoomPayload = {
 };
 
 type LeaveRoomPayload = {
+  roomId?: string;
+};
+
+type RematchPayload = {
   roomId?: string;
 };
 
@@ -99,6 +106,28 @@ export function setupSocket(io: Server) {
         return;
       }
 
+      // A live socket already in this seat means the game is open somewhere
+      // else — a second tab shares the same stored player id. The seat is not
+      // handed over: doing that leaves the other tab connected but orphaned,
+      // unable to guess and with nothing on screen to explain why. A real
+      // refresh disconnects first, which blanks socketId, so it still passes.
+      const seated =
+        player.socketId && player.socketId !== socket.id
+          ? io.sockets.sockets.get(player.socketId)
+          : undefined;
+
+      if (seated?.connected) {
+        socket.emit("seat_taken", {
+          message: "This game is already open in another tab.",
+        });
+
+        console.log(
+          `Refused a second seat for ${player.id} in room ${room.id}`
+        );
+
+        return;
+      }
+
       // Attach the new socket connection to the existing player.
       player.socketId = socket.id;
 
@@ -124,6 +153,14 @@ export function setupSocket(io: Server) {
           ? opponent.guesses.map((entry) => entry.states)
           : [],
         opponentStatus: opponent?.status ?? null,
+        // A multiplayer room past `waiting` with an empty other seat is one the
+        // opponent has left; before that, nobody has taken the seat yet.
+        opponentLeft:
+          room.mode === "multiplayer" &&
+          room.status !== "waiting" &&
+          !opponent,
+        wantsRematch: player.wantsRematch,
+        opponentWantsRematch: opponent?.wantsRematch ?? false,
         roomStatus: room.status,
         solution: room.status === "finished" ? room.solution : null,
       });
@@ -173,9 +210,9 @@ export function setupSocket(io: Server) {
       }
 
       try {
-        const words = await fetchWords(language, category);
+        const words = getWords(language, category);
 
-        const solution = words[Math.floor(Math.random() * words.length)];
+        const solution = pickSolution(words);
 
         const room = createRoom(solution, words, mode, language, category);
 
@@ -244,6 +281,18 @@ export function setupSocket(io: Server) {
         if (getPlayer(room, playerId)) {
           socket.emit("room_error", {
             message: "You are already in this room",
+          });
+
+          return;
+        }
+
+        // Only a room that has never started takes a newcomer. Without this, a
+        // seat freed by someone leaving would let a stranger walk in mid-round
+        // with a full six guesses against a word the others have been working
+        // on. Returning players come through `reconnect_room` instead.
+        if (room.status !== "waiting") {
+          socket.emit("room_error", {
+            message: "That game has already started",
           });
 
           return;
@@ -336,10 +385,18 @@ export function setupSocket(io: Server) {
       if (winner || isRoundOver) {
         room.status = "finished";
 
-        io.to(room.id).emit("game_over", {
-          winnerId: winner?.id ?? null,
-          solution: room.solution,
-        });
+        // Sent per socket rather than to the room. A broadcast would have to
+        // name the winner by player id, and that id is the whole of what
+        // `reconnect_room` asks for before handing over a seat — so the loser
+        // would end every round holding their opponent's credentials.
+        for (const entry of room.players) {
+          if (!entry.socketId) continue;
+
+          io.to(entry.socketId).emit("game_over", {
+            won: entry.status === "won",
+            solution: room.solution,
+          });
+        }
 
         console.log(`Round finished in room ${room.id}`);
       }
@@ -406,6 +463,30 @@ export function setupSocket(io: Server) {
         helpUsage: player.helpUsage,
         word: room.solution.toUpperCase(),
       });
+    });
+
+    socket.on("request_rematch", (payload: RematchPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room ? getPlayerBySocket(room, socket.id) : undefined;
+
+      if (!room || !player) return;
+
+      if (room.mode !== "multiplayer" || room.status !== "finished") return;
+
+      player.wantsRematch = true;
+
+      socket.to(room.id).emit("rematch_requested");
+
+      if (!isRematchReady(room)) return;
+
+      resetRoom(room, pickSolution(room.wordPool, room.solution));
+
+      io.to(room.id).emit("round_started", {
+        language: room.language,
+        category: room.category,
+      });
+
+      console.log(`Rematch started in room ${room.id}`);
     });
 
     socket.on("leave_room", (payload: LeaveRoomPayload) => {

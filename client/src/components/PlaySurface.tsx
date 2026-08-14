@@ -39,9 +39,13 @@ interface PlaySurfaceProps {
    */
   aside?: (view: GameView) => ReactNode;
   /** Rendered under the board, above the keyboard. */
-  sideNote?: ReactNode;
-  onPlayAgain?: () => void;
-  playAgainLabel?: string;
+  sideNote?: (view: GameView) => ReactNode;
+  /**
+   * Rendered under the result once the round is over. A render prop for the
+   * same reason `aside` is one: what belongs there depends on whether the
+   * opponent is still around, and only this component knows that.
+   */
+  footer?: (view: GameView) => ReactNode;
 }
 
 export function PlaySurface({
@@ -56,8 +60,7 @@ export function PlaySurface({
   headerRight,
   aside,
   sideNote,
-  onPlayAgain,
-  playAgainLabel = 'New game',
+  footer,
 }: PlaySurfaceProps) {
   const {
     guesses,
@@ -82,6 +85,13 @@ export function PlaySurface({
   const gameStatus: GameStatus =
     playerStatus === 'playing' && !outcome ? 'playing' : 'ended';
 
+  const view: GameView = {
+    opponentRows,
+    opponentLeft,
+    playerStatus,
+    guessCount: guesses.length,
+  };
+
   const column = (
     <div>
       <ColorKey />
@@ -103,7 +113,7 @@ export function PlaySurface({
         </div>
       ) : null}
 
-      {sideNote}
+      {sideNote?.(view)}
 
       {outcome ? (
         <div className="mx-auto mt-6 max-w-md text-center">
@@ -115,15 +125,7 @@ export function PlaySurface({
               {solution}
             </p>
           ) : null}
-          {onPlayAgain ? (
-            <button
-              type="button"
-              onClick={onPlayAgain}
-              className="mt-4 font-accent font-semibold text-coral-ink underline underline-offset-4"
-            >
-              {playAgainLabel}
-            </button>
-          ) : null}
+          {footer ? <div className="mt-4">{footer(view)}</div> : null}
         </div>
       ) : null}
 
@@ -152,12 +154,7 @@ export function PlaySurface({
           {/* The centre scrim does not reach out here, so the panel carries its
               own paper backing or the opponent's bars vanish into the art. */}
           <aside className="hidden rounded-2xl border-l border-ink/10 bg-paper/75 p-5 backdrop-blur-[1px] lg:block">
-            {aside({
-              opponentRows,
-              opponentLeft,
-              playerStatus,
-              guessCount: guesses.length,
-            })}
+            {aside(view)}
           </aside>
         </div>
       ) : (

@@ -23,6 +23,8 @@ export type Player = {
   guesses: SubmittedGuess[];
   status: PlayerStatus;
   helpUsage: HelpUsage;
+  /** Cleared by the reset, so it only ever describes the round just finished. */
+  wantsRematch: boolean;
   leaveTimer?: ReturnType<typeof setTimeout>;
 };
 
@@ -39,7 +41,15 @@ export type Room = {
   players: Player[];
 };
 
-const MAX_PLAYERS = 2;
+export const MAX_PLAYERS = 2;
+
+function freshHelpUsage(): HelpUsage {
+  return {
+    revealLetter: false,
+    suggestWord: false,
+    flashSolution: false,
+  };
+}
 
 const ROOM_CODE_LENGTH = 6;
 
@@ -102,16 +112,36 @@ export function addPlayer(room: Room, playerId: string, socketId: string): Playe
     socketId,
     guesses: [],
     status: "playing",
-    helpUsage: {
-      revealLetter: false,
-      suggestWord: false,
-      flashSolution: false,
-    },
+    helpUsage: freshHelpUsage(),
+    wantsRematch: false,
   };
 
   room.players.push(player);
 
   return player;
+}
+
+// A rematch keeps the room, the seats and the word pool, and replaces only the
+// round: a new word and a clean board for everyone.
+export function resetRoom(room: Room, solution: string) {
+  room.solution = solution;
+  room.status = "playing";
+
+  for (const player of room.players) {
+    player.guesses = [];
+    player.status = "playing";
+    player.helpUsage = freshHelpUsage();
+    player.wantsRematch = false;
+  }
+}
+
+// Both seats have to ask, so one player cannot pull the other off the result
+// screen before they have read it.
+export function isRematchReady(room: Room): boolean {
+  return (
+    room.players.length === MAX_PLAYERS &&
+    room.players.every((player) => player.wantsRematch)
+  );
 }
 
 export function getPlayer(room: Room, playerId: string) {

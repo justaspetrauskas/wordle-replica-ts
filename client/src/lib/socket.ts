@@ -14,6 +14,9 @@ import type {
 interface ServerToClientEvents {
   room_created: (payload: { roomId: string }) => void;
   room_error: (payload: { message: string }) => void;
+  // Distinct from room_error because the saved room is still good — the tab
+  // holding the seat shares this localStorage, so it must not be cleared.
+  seat_taken: (payload: { message: string }) => void;
   game_started: (payload: { language: LanguageCode; category: CategoryId }) => void;
   guess_result: (payload: { guesses: SubmittedGuess[]; status: PlayerStatus }) => void;
   invalid_guess: (payload: { message: string }) => void;
@@ -23,8 +26,12 @@ interface ServerToClientEvents {
     rows: LetterState[][];
     status: PlayerStatus;
   }) => void;
-  game_over: (payload: { winnerId: string | null; solution: string }) => void;
+  // `won` is resolved server-side and sent to each socket on its own, so no
+  // player ever learns the other's id.
+  game_over: (payload: { won: boolean; solution: string }) => void;
   player_left: () => void;
+  rematch_requested: () => void;
+  round_started: (payload: { language: LanguageCode; category: CategoryId }) => void;
   hint_result: (payload: {
     hint: HintKind;
     helpUsage: HelpUsage;
@@ -45,6 +52,7 @@ interface ClientToServerEvents {
   }) => void;
   join_room: (payload: { roomId: string; playerId: string }) => void;
   leave_room: (payload: { roomId: string }) => void;
+  request_rematch: (payload: { roomId: string }) => void;
   submit_guess: (payload: { roomId: string; guess: string }) => void;
   request_hint: (payload: { roomId: string; hint: HintKind }) => void;
   reconnect_room: (payload: { roomId: string; playerId: string }) => void;

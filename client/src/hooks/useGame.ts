@@ -13,7 +13,6 @@ import type {
 } from '../types/game';
 import { socket } from '../lib/socket';
 import { WORD_LENGTH } from '../constants';
-import { getPlayerId } from '../lib/player';
 
 /** A better-known state always wins, so a letter never downgrades to absent. */
 const STATE_RANK: Record<KeyState, number> = {
@@ -71,7 +70,11 @@ export function useGame(
   const [opponentRows, setOpponentRows] = useState<LetterState[][]>(
     () => restore?.opponentRows ?? []
   );
-  const [opponentLeft, setOpponentLeft] = useState<boolean>(false);
+  // Seeded from the restore too: a refresh after the opponent walked out must
+  // not come back showing an empty board as though they were still there.
+  const [opponentLeft, setOpponentLeft] = useState<boolean>(
+    () => restore?.opponentLeft ?? false
+  );
   const [helpUsage, setHelpUsage] = useState<HelpUsage>(
     () => restore?.helpUsage ?? INITIAL_HELP_USAGE
   );
@@ -123,13 +126,11 @@ export function useGame(
     };
 
     const handleGameOver = ({
-      winnerId,
+      won,
       solution: revealedSolution,
-    }: { winnerId: string | null; solution: string }) => {
-      // The server reports the winner by persistent player id. socket.id is a
-      // per-connection value and would never match.
+    }: { won: boolean; solution: string }) => {
       setSolution(revealedSolution);
-      setOutcome(winnerId && winnerId === getPlayerId() ? 'won' : 'lost');
+      setOutcome(won ? 'won' : 'lost');
       setIsSubmitting(false);
       setCurrentGuess([]);
     };

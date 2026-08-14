@@ -27,7 +27,7 @@ export function Tooltip({ label, children }: { label: string; children: string }
   }, [open]);
 
   return (
-    <span ref={ref} className="relative inline-flex align-middle">
+    <span ref={ref} className="inline-flex align-middle">
       <button
         type="button"
         className="inline-flex h-6 w-6 items-center justify-center text-mute transition hover:text-navy"
@@ -39,13 +39,20 @@ export function Tooltip({ label, children }: { label: string; children: string }
         <HelpCircle size={16} />
       </button>
       {open && (
-        <span
-          id={id}
-          role="tooltip"
-          className="absolute left-1/2 top-8 z-30 w-64 -translate-x-1/2 rounded-xl border border-ink/10 bg-washi px-3 py-2.5 text-left text-xs leading-relaxed text-ink shadow-lg sm:w-72 sm:text-sm"
-        >
-          {children}
-        </span>
+        <>
+          <span
+            aria-hidden
+            onMouseDown={() => setOpen(false)}
+            className="fixed inset-0 z-30 bg-ink/40 backdrop-blur-[2px]"
+          />
+          <span
+            id={id}
+            role="tooltip"
+            className="fixed left-1/2 top-1/2 z-40 w-[min(22rem,calc(100vw-2.5rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ink/10 bg-washi px-5 py-4 text-left text-sm normal-case leading-relaxed tracking-normal text-ink shadow-xl"
+          >
+            {children}
+          </span>
+        </>
       )}
     </span>
   );

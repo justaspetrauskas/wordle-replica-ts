@@ -13,8 +13,6 @@ vi.mock('../lib/socket', () => ({
     },
     off: vi.fn(),
     emit: (...args: unknown[]) => emit(...args),
-    // useRoom registers every listener before it connects, so running the
-    // 'connect' handler here is enough to reach the resume/create decision.
     connect: () => handlers.get('connect')?.(),
     disconnect: vi.fn(),
   },
@@ -62,7 +60,6 @@ describe('SoloGame', () => {
     });
 
     it('ignores a category the chosen language cannot serve', () => {
-      // Misc is English-only, so the server would refuse this pairing.
       renderSolo('/play?lang=es&cat=misc');
 
       expect(emitted('create_room')).toHaveLength(0);
@@ -74,7 +71,6 @@ describe('SoloGame', () => {
       saveRoom('K7MPQ2', 'solo');
       renderSolo();
 
-      // This is what a refresh mid-round relies on.
       expect(emit).toHaveBeenCalledWith(
         'reconnect_room',
         expect.objectContaining({ roomId: 'K7MPQ2' })

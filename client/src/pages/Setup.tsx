@@ -69,11 +69,6 @@ export function Setup() {
 
   const go = () => {
     if (mode === 'solo') {
-      // Pressing Begin is a deliberate new game, and it is the only signal that
-      // says so: the play screen sees the same URL whether the player arrived
-      // here or refreshed mid-round. Letting the saved room go before leaving
-      // is what stops it resuming — a finished board would otherwise come
-      // straight back, since the room outlives the round on the server.
       clearSavedRoom();
       navigate(`/play?lang=${language}&cat=${effectiveCategory}`);
       return;
@@ -96,7 +91,7 @@ export function Setup() {
   };
 
   const pill = (active: boolean, activeClass: string) =>
-    `rounded-full px-5 py-2 text-sm font-semibold transition ${
+    `flex-1 rounded-full px-5 py-2 text-sm font-semibold transition sm:flex-none ${
       active ? activeClass : 'text-mute'
     }`;
 
@@ -182,7 +177,7 @@ export function Setup() {
         )}
 
         {(mode === 'solo' || tab === 'create') && (
-          <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+          <div className={`grid ${meta.image ? 'lg:grid-cols-[1.05fr_0.95fr]' : ''}`}>
             {meta.image ? (
               <img src={meta.image} alt="" className="h-52 w-full object-cover sm:h-64 lg:h-full" />
             ) : null}

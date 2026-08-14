@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "words": "tsx scripts/build-word-sets.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@types/node": "^24.12.2",
     "tsx": "^4.23.1",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "wordnet": "^2.0.0"
   }
 }

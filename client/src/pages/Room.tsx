@@ -19,6 +19,10 @@ export function Room() {
     category,
     restored,
     restoreCount,
+    seatTaken,
+    wantsRematch,
+    opponentWantsRematch,
+    requestRematch,
     leaveRoom,
   } = useRoom('multiplayer', normalized);
 
@@ -36,6 +40,26 @@ export function Room() {
     leaveRoom();
     navigate('/?mode=together');
   };
+
+  // The room is fine here — this browser just has it open twice. Nothing is
+  // cleared, so the tab that holds the seat carries on undisturbed.
+  if (seatTaken) {
+    return (
+      <PageShell>
+        <TopBar backTo="/?mode=together" />
+        <p className="mt-16 font-display text-3xl">Already open in another tab.</p>
+        <p className="mt-3 max-w-md text-sm text-mute" role="alert">
+          {error} Switch back to it to keep playing — closing this tab changes nothing.
+        </p>
+        <Link
+          to="/?mode=together"
+          className="mt-4 inline-block font-accent text-coral-ink underline underline-offset-4"
+        >
+          Back to setup
+        </Link>
+      </PageShell>
+    );
+  }
 
   if (error) {
     return (
@@ -88,6 +112,47 @@ export function Room() {
             Leave
           </button>
         </div>
+      }
+      footer={({ opponentLeft }) =>
+        opponentLeft ? (
+          <Link
+            to="/?mode=together"
+            className="font-accent font-semibold text-coral-ink underline underline-offset-4"
+          >
+            New room
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={requestRematch}
+              disabled={wantsRematch}
+              className="font-accent font-semibold text-coral-ink underline underline-offset-4 disabled:no-underline disabled:opacity-60"
+            >
+              {wantsRematch ? 'Waiting for your opponent…' : 'Play again'}
+            </button>
+            {opponentWantsRematch && !wantsRematch ? (
+              <p className="mt-1 text-xs text-mute">Your opponent wants another round.</p>
+            ) : null}
+          </>
+        )
+      }
+      sideNote={({ opponentRows, opponentLeft, guessCount }) =>
+        waiting ? null : (
+          <div className="mt-4 flex items-center justify-center gap-3 lg:hidden">
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-mute">Opponent</p>
+              {opponentLeft ? (
+                <p className="mt-0.5 text-xs text-coral-ink">Left the game</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-mute">
+                  {opponentRows.length}/6 · you {guessCount}/6
+                </p>
+              )}
+            </div>
+            <MiniBoard rows={opponentRows} compact />
+          </div>
+        )
       }
       aside={({ opponentRows, opponentLeft, guessCount }) => (
         <>

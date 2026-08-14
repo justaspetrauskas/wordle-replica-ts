@@ -3,12 +3,12 @@ export type LetterState = 'correct' | 'present' | 'absent' | 'empty';
 export type GameStatus = 'playing' | 'ended';
 
 /**
- * Only the languages the word API serves. It answers HTTP 200 with a `null`
- * body for Danish and Lithuanian, so offering them only produced failed rooms.
+ * Only the languages the shipped word sets cover. Danish and Lithuanian are
+ * kept out because no set has been generated for them yet.
  */
 export type LanguageCode = 'en' | 'es';
 
-export type CategoryId = 'misc' | 'animals' | 'countries';
+export type CategoryId = 'misc' | 'animals' | 'countries' | 'food';
 
 export type GameMode = 'solo' | 'multiplayer' | 'ai';
 
@@ -64,6 +64,10 @@ export interface RoomReconnectedPayload {
   /** Colours only — never the opponent's letters. */
   opponentRows: LetterState[][];
   opponentStatus: PlayerStatus | null;
+  /** True only when the other seat was taken and then given up. */
+  opponentLeft: boolean;
+  wantsRematch: boolean;
+  opponentWantsRematch: boolean;
   roomStatus: ServerRoomStatus;
   /** Only set once the round is over. */
   solution: string | null;

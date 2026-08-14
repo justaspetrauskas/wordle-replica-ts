@@ -78,18 +78,19 @@ describe('Setup', () => {
   });
 
   describe('category availability', () => {
-    it('enables the three English categories', () => {
+    it('enables the four English categories', () => {
       renderSetup();
 
       expect(category('Misc')).toBeEnabled();
       expect(category('Animals')).toBeEnabled();
       expect(category('Countries')).toBeEnabled();
+      expect(category('Food')).toBeEnabled();
     });
 
-    it('disables the categories the API cannot serve', () => {
+    it('disables the categories with no generated word set', () => {
       renderSetup();
 
-      for (const name of ['Food', 'Birds', 'Science', 'History']) {
+      for (const name of ['Birds', 'Science', 'History']) {
         expect(category(name)).toBeDisabled();
       }
     });
@@ -151,8 +152,6 @@ describe('Setup', () => {
 
       await user.click(screen.getByRole('button', { name: 'Begin' }));
 
-      // A room outlives its round on the server, so a kept save would resume
-      // the finished board instead of starting the game the player asked for.
       expect(getSavedRoom()).toBeNull();
     });
 
@@ -160,8 +159,6 @@ describe('Setup', () => {
       saveRoom('OLDRM1', 'solo');
       renderSetup();
 
-      // Only starting a game abandons it — merely opening setup (the back
-      // arrow out of a game in progress) must still be recoverable.
       expect(getSavedRoom()).toEqual({ roomId: 'OLDRM1', mode: 'solo' });
     });
   });

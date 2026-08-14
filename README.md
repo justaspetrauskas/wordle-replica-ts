@@ -30,11 +30,18 @@ npm run dev
 
 The server listens on 3001, Vite serves the client on 5173, and the client talks to `http://localhost:3001` by default. Nothing else to configure — the word API is keyless.
 
-Optional environment variables:
+Configuration lives in `server/.env`, which is optional — copy `server/.env.example` to
+start, or skip it and take the defaults. Real environment variables win over the file, so a
+host that injects its own `PORT` needs no change here.
 
-- `CLIENT_ORIGIN` — server CORS allowlist, comma-separated. Defaults to localhost 5173 and 5174.
-- `VITE_SERVER_URL` — where the client looks for the server.
-- `PORT` — moves the Vite dev server off 5173. Add the new origin to `CLIENT_ORIGIN` if you do.
+- `PORT` — the port the server listens on. Defaults to 3001. Vite reads `PORT` too, for its
+  own dev server, so keep the backend's copy in `server/.env` rather than exporting it in a
+  shell you also start the client from.
+- `CLIENT_ORIGIN` — CORS allowlist for both Fastify and Socket.IO, comma-separated.
+  Defaults to localhost 5173 and 5174. Add your deployed client origin before going live.
+- `VITE_SERVER_URL` — where the client looks for the server. This one is baked in at build
+  time, so it belongs in `client/.env` or the build environment, not `server/.env`.
+  Defaults to `http://localhost:3001`.
 
 ```bash
 npm test    # client suite

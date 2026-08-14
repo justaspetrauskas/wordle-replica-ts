@@ -31,6 +31,9 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
   // A failed reconnect falls back to joining, but only once — otherwise a room
   // that is genuinely gone would loop between the two.
   const triedJoin = useRef<boolean>(false);
+  // Same idea for a seat that looked busy: one retry, then believe it.
+  const retriedSeat = useRef<boolean>(false);
+  const [seatTaken, setSeatTaken] = useState<boolean>(false);
   const [status, setStatus] = useState<RoomStatus>('idle');
   const [error, setError] = useState<string>('');
   const [language, setLanguage] = useState<LanguageCode>('en');
@@ -40,9 +43,23 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
   // late to ever see it. The payload is held here and passed down instead.
   const [restored, setRestored] = useState<RoomReconnectedPayload | null>(null);
   // Bumped on every restore so callers can remount <Game> and reseed its state.
+  // A rematch bumps it too — the new round wants exactly the same clean slate.
   const [restoreCount, setRestoreCount] = useState<number>(0);
+  const [wantsRematch, setWantsRematch] = useState<boolean>(false);
+  const [opponentWantsRematch, setOpponentWantsRematch] = useState<boolean>(false);
 
   useEffect(() => {
+    let seatRetryTimer: number | undefined;
+
+    /** The room this screen would resume, if any. */
+    const resumableRoomId = () => {
+      if (targetRoomId) return targetRoomId;
+
+      const saved = getSavedRoom();
+
+      return saved?.mode === mode ? saved.roomId : '';
+    };
+
     const handleConnect = () => {
       const saved = getSavedRoom();
 
@@ -84,8 +101,59 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
       setCategory(payload.category);
       setRestored(payload);
       setRestoreCount((count) => count + 1);
+      setWantsRematch(payload.wantsRematch);
+      setOpponentWantsRematch(payload.opponentWantsRematch);
       setError('');
+      setSeatTaken(false);
+      retriedSeat.current = false;
       setStatus(payload.roomStatus);
+    };
+
+    // A refresh can reach the server before the old socket's disconnect does,
+    // which looks exactly like a second tab. One retry tells the two apart.
+    // The saved room is deliberately left alone either way: whichever tab does
+    // hold the seat is still playing, and it reads the same localStorage.
+    const handleSeatTaken = ({ message }: { message: string }) => {
+      const roomToResume = resumableRoomId();
+
+      if (!retriedSeat.current && roomToResume) {
+        retriedSeat.current = true;
+
+        seatRetryTimer = window.setTimeout(() => {
+          socket.emit('reconnect_room', {
+            roomId: roomToResume,
+            playerId: getPlayerId(),
+          });
+        }, 600);
+
+        return;
+      }
+
+      setStatus('idle');
+      setRestored(null);
+      setSeatTaken(true);
+      setError(message);
+    };
+
+    const handleRematchRequested = () => {
+      setOpponentWantsRematch(true);
+    };
+
+    // Both seats agreed, so the room dealt a new word. Bumping the restore
+    // count remounts <PlaySurface>, which is what clears the finished board,
+    // the used helps and the opponent's rows in one go.
+    const handleRoundStarted = ({
+      language: roomLanguage,
+      category: roomCategory,
+    }: { language: LanguageCode; category: CategoryId }) => {
+      setLanguage(roomLanguage);
+      setCategory(roomCategory);
+      setRestored(null);
+      setRestoreCount((count) => count + 1);
+      setWantsRematch(false);
+      setOpponentWantsRematch(false);
+      setError('');
+      setStatus('playing');
     };
 
     const handleRoomError = ({ message }: { message: string }) => {
@@ -140,8 +208,11 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     socket.on('room_created', handleRoomCreated);
     socket.on('room_reconnected', handleRoomReconnected);
     socket.on('room_error', handleRoomError);
+    socket.on('seat_taken', handleSeatTaken);
     socket.on('game_started', handleGameStarted);
     socket.on('game_over', handleGameOver);
+    socket.on('rematch_requested', handleRematchRequested);
+    socket.on('round_started', handleRoundStarted);
     socket.on('connect_error', handleConnectError);
 
     socket.connect();
@@ -151,9 +222,14 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
       socket.off('room_created', handleRoomCreated);
       socket.off('room_reconnected', handleRoomReconnected);
       socket.off('room_error', handleRoomError);
+      socket.off('seat_taken', handleSeatTaken);
       socket.off('game_started', handleGameStarted);
       socket.off('game_over', handleGameOver);
+      socket.off('rematch_requested', handleRematchRequested);
+      socket.off('round_started', handleRoundStarted);
       socket.off('connect_error', handleConnectError);
+
+      window.clearTimeout(seatRetryTimer);
 
       socket.disconnect();
     };
@@ -174,6 +250,14 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     [mode]
   );
 
+  /** Ask for another round in the same room. Both seats have to ask. */
+  const requestRematch = useCallback(() => {
+    if (!roomId) return;
+
+    setWantsRematch(true);
+    socket.emit('request_rematch', { roomId });
+  }, [roomId]);
+
   /** Give up the current room so a refresh no longer resumes it. */
   const leaveRoom = useCallback(() => {
     if (roomId) socket.emit('leave_room', { roomId });
@@ -182,6 +266,7 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     setRoomId('');
     setStatus('idle');
     setError('');
+    setSeatTaken(false);
     setRestored(null);
   }, [roomId]);
 
@@ -193,7 +278,11 @@ export function useRoom(mode: RoomMode, targetRoomId?: string) {
     category,
     restored,
     restoreCount,
+    seatTaken,
+    wantsRematch,
+    opponentWantsRematch,
     createRoom,
+    requestRematch,
     leaveRoom,
   };
 }

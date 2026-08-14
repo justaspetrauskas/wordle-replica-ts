@@ -1,8 +1,8 @@
 import type { CategoryId, LanguageCode } from '../types/game';
 
 /**
- * The languages the word API actually serves. It answers with HTTP 200 and a
- * `null` body for everything else, so Danish and Lithuanian are not offered.
+ * The languages the shipped word sets cover. Danish and Lithuanian are not
+ * offered because no set has been generated for them yet.
  */
 export const PLAYABLE_LANGUAGES = ['en', 'es'] as const satisfies readonly LanguageCode[];
 
@@ -13,7 +13,7 @@ export type PlayableLanguage = (typeof PLAYABLE_LANGUAGES)[number];
  * narrower set the server will actually accept — the rest are displayed as
  * "soon" so the shape of the game is visible without being selectable.
  */
-export type CategoryKey = CategoryId | 'food' | 'birds' | 'science' | 'history';
+export type CategoryKey = CategoryId | 'birds' | 'science' | 'history';
 
 export interface CategoryMeta {
   id: CategoryKey;
@@ -27,9 +27,9 @@ export interface CategoryMeta {
 }
 
 /**
- * Availability is per language, not global: the API serves `animals` and
- * `countries` in both languages but the general pool behind `misc` only in
- * English.
+ * Availability is per language, not global: `animals`, `countries` and `food`
+ * have sets in both languages, but the general pool behind `misc` is English
+ * only.
  */
 export const CATEGORIES: CategoryMeta[] = [
   {
@@ -70,7 +70,7 @@ export const CATEGORIES: CategoryMeta[] = [
     label: { en: 'Food', es: 'Comida' },
     kicker: '食',
     note: { en: 'Kitchen still life.', es: 'Bodegón de cocina.' },
-    availableIn: [],
+    availableIn: ['en', 'es'],
   },
   {
     id: 'birds',
@@ -117,7 +117,12 @@ export function isPlayableLanguage(value: unknown): value is PlayableLanguage {
 
 /** Narrows to a category the server will accept, not merely one we display. */
 export function isCategoryId(value: unknown): value is CategoryId {
-  return value === 'misc' || value === 'animals' || value === 'countries';
+  return (
+    value === 'misc' ||
+    value === 'animals' ||
+    value === 'countries' ||
+    value === 'food'
+  );
 }
 
 /** Categories the API can actually serve a word for in this language. */

@@ -27,7 +27,13 @@ export function TopBar({
           <span className="inline-block h-9 w-2" />
         )}
         <Link to="/" className="flex min-w-0 items-baseline gap-1.5">
-          <span className="font-accent text-base font-bold tracking-tight sm:text-lg">WORDL</span>
+          <span
+            className={`font-accent text-base font-bold tracking-tight sm:text-lg ${
+              center ? 'hidden sm:inline' : ''
+            }`}
+          >
+            WORDL
+          </span>
           <span className="hidden font-display text-xs text-navy sm:inline">ワードル</span>
         </Link>
       </div>

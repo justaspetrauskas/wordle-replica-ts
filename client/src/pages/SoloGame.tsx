@@ -69,7 +69,15 @@ export function SoloGame() {
           <span className="font-accent text-xs uppercase tracking-[0.18em] text-mute">Solo</span>
         }
         headerRight={<SetupSummary mode="solo" language={language} category={category} />}
-        onPlayAgain={playAgain}
+        footer={() => (
+          <button
+            type="button"
+            onClick={playAgain}
+            className="font-accent font-semibold text-coral-ink underline underline-offset-4"
+          >
+            New game
+          </button>
+        )}
       />
     );
   }

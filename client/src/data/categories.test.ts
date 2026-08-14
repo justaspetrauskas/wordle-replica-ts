@@ -8,12 +8,12 @@ import {
 } from './categories';
 
 describe('playable languages', () => {
-  it('accepts only the languages the word API serves', () => {
+  it('accepts only the languages with generated word sets', () => {
     expect(isPlayableLanguage('en')).toBe(true);
     expect(isPlayableLanguage('es')).toBe(true);
   });
 
-  it('rejects the languages the API answers with null', () => {
+  it('rejects the languages with no word set', () => {
     expect(isPlayableLanguage('da')).toBe(false);
     expect(isPlayableLanguage('lt')).toBe(false);
     expect(isPlayableLanguage('')).toBe(false);
@@ -26,11 +26,11 @@ describe('isCategoryId', () => {
     expect(isCategoryId('misc')).toBe(true);
     expect(isCategoryId('animals')).toBe(true);
     expect(isCategoryId('countries')).toBe(true);
+    expect(isCategoryId('food')).toBe(true);
   });
 
   it('rejects categories that are only displayed', () => {
     // These appear in the picker as "soon" but must never reach create_room.
-    expect(isCategoryId('food')).toBe(false);
     expect(isCategoryId('birds')).toBe(false);
     expect(isCategoryId('science')).toBe(false);
     expect(isCategoryId('history')).toBe(false);
@@ -40,7 +40,7 @@ describe('isCategoryId', () => {
 describe('per-language availability', () => {
   it('offers the general pool in English only', () => {
     expect(isCategoryAvailable('misc', 'en')).toBe(true);
-    // The API returns null for es/wordle, so Misc cannot be offered there.
+    // No Spanish set was generated for the general pool.
     expect(isCategoryAvailable('misc', 'es')).toBe(false);
   });
 
@@ -48,24 +48,30 @@ describe('per-language availability', () => {
     for (const language of ['en', 'es'] as const) {
       expect(isCategoryAvailable('animals', language)).toBe(true);
       expect(isCategoryAvailable('countries', language)).toBe(true);
+      expect(isCategoryAvailable('food', language)).toBe(true);
     }
   });
 
-  it('offers nothing that the API cannot serve', () => {
+  it('offers nothing that has no generated word set', () => {
     for (const language of ['en', 'es'] as const) {
-      for (const id of ['food', 'birds', 'science', 'history'] as const) {
+      for (const id of ['birds', 'science', 'history'] as const) {
         expect(isCategoryAvailable(id, language)).toBe(false);
       }
     }
   });
 
-  it('lists three categories for English and two for Spanish', () => {
+  it('lists four categories for English and three for Spanish', () => {
     expect(categoriesFor('en').map((entry) => entry.id)).toEqual([
       'misc',
       'animals',
       'countries',
+      'food',
     ]);
-    expect(categoriesFor('es').map((entry) => entry.id)).toEqual(['animals', 'countries']);
+    expect(categoriesFor('es').map((entry) => entry.id)).toEqual([
+      'animals',
+      'countries',
+      'food',
+    ]);
   });
 });
 
@@ -97,11 +103,12 @@ describe('resolveCategory', () => {
 });
 
 describe('category metadata', () => {
-  it('gives every playable category artwork to show', () => {
+  it('gives artwork to every playable category except food, which is still waiting on it', () => {
     for (const category of CATEGORIES) {
-      if (category.availableIn.length > 0) {
-        expect(category.image).toBeTruthy();
-      }
+      if (category.availableIn.length === 0) continue;
+
+      if (category.id === 'food') expect(category.image).toBeFalsy();
+      else expect(category.image).toBeTruthy();
     }
   });
 

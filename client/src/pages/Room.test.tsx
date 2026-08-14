@@ -98,6 +98,14 @@ describe('Room', () => {
       ).toBeInTheDocument();
     });
 
+    it('says so in the compact strip the narrow layout uses', () => {
+      renderRoom();
+
+      act(() => handlers.get('player_left')?.());
+
+      expect(screen.getByText('Left the game')).toBeInTheDocument();
+    });
+
     it('is not announced while the room is still waiting', () => {
       render(
         <MemoryRouter initialEntries={[`/room/${ROOM_ID}`]}>
@@ -123,7 +131,50 @@ describe('Room', () => {
       });
 
       expect(screen.getByText(/Share the code above to start/)).toBeInTheDocument();
+      expect(screen.queryByText('Left the game')).not.toBeInTheDocument();
       expect(emitted('leave_room')).toHaveLength(0);
+    });
+  });
+
+  describe('the compact strip', () => {
+    it('carries both scores, since there is no side column to read them from', () => {
+      renderRoom();
+
+      act(() => {
+        handlers.get('opponent_progress')?.({
+          rows: [['absent', 'absent', 'correct', 'present', 'absent']],
+          status: 'playing',
+        });
+      });
+
+      expect(screen.getByText('1/6 · you 0/6')).toBeInTheDocument();
+    });
+
+    it('stays out of the way until a second player arrives', () => {
+      render(
+        <MemoryRouter initialEntries={[`/room/${ROOM_ID}`]}>
+          <Routes>
+            <Route path="/room/:code" element={<Room />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      act(() => {
+        handlers.get('room_reconnected')?.({
+          roomId: ROOM_ID,
+          language: 'en',
+          category: 'animals',
+          guesses: [],
+          status: 'playing',
+          helpUsage: { revealLetter: false, suggestWord: false, flashSolution: false },
+          opponentRows: [],
+          opponentStatus: null,
+          roomStatus: 'waiting',
+          solution: null,
+        });
+      });
+
+      expect(screen.queryByText(/· you \d\/6/)).not.toBeInTheDocument();
     });
   });
 });
