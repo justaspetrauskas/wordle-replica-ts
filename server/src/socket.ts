@@ -1,0 +1,527 @@
+import { Server } from "socket.io";
+import {
+  addPlayer,
+  createRoom,
+  disconnectPlayer,
+  getPlayer,
+  getPlayerBySocket,
+  getRoom,
+  isRematchReady,
+  isRoomFull,
+  keepSeat,
+  removePlayer,
+  resetRoom,
+  type GameMode,
+  type HelpUsage,
+} from "./rooms.js";
+import {
+  getWords,
+  isAvailable,
+  isCategoryId,
+  isLanguageCode,
+  WordSourceError,
+  type CategoryId,
+  type LanguageCode,
+} from "./words.js";
+import {
+  MAX_GUESSES,
+  WORD_LENGTH,
+  getLetterStates,
+  isValidGuess,
+  pickHintLetter,
+  pickSolution,
+  pickSuggestion,
+} from "./game.js";
+
+type HintKind = keyof HelpUsage;
+
+type CreateRoomPayload = {
+  language?: LanguageCode;
+  category?: CategoryId;
+  mode?: GameMode;
+  playerId?: string;
+};
+
+// Guesses and hints are attributed to the socket they arrived on, so they carry
+// no playerId — a client cannot act on behalf of someone else.
+type SubmitGuessPayload = {
+  roomId?: string;
+  guess?: string;
+};
+
+type RequestHintPayload = {
+  roomId?: string;
+  hint?: HintKind;
+};
+
+type ReconnectRoomPayload = {
+  roomId?: string;
+  playerId?: string;
+};
+
+type LeaveRoomPayload = {
+  roomId?: string;
+};
+
+type RematchPayload = {
+  roomId?: string;
+};
+
+
+const HINT_KINDS: HintKind[] = ["revealLetter", "suggestWord", "flashSolution"];
+
+const RECONNECT_GRACE_MS = 15_000;
+
+function evictPlayer(io: Server, playerId: string) {
+  for (const room of removePlayer(playerId)) {
+    io.to(room.id).emit("player_left");
+  }
+}
+
+export function setupSocket(io: Server) {
+  io.on("connection", (socket) => {
+    console.log("Player connected:", socket.id);
+
+    socket.on("reconnect_room", (payload: ReconnectRoomPayload) => {
+      const roomId = payload?.roomId ?? "";
+      const playerId = payload?.playerId ?? "";
+
+      const room = getRoom(roomId.trim());
+
+      if (!room || !playerId) {
+        socket.emit("room_error", {
+          message: "Could not reconnect to the game",
+        });
+
+        return;
+      }
+
+      const player = getPlayer(room, playerId);
+
+      if (!player) {
+        socket.emit("room_error", {
+          message: "Player was not found in this room",
+        });
+
+        return;
+      }
+
+      // A live socket already in this seat means the game is open somewhere
+      // else — a second tab shares the same stored player id. The seat is not
+      // handed over: doing that leaves the other tab connected but orphaned,
+      // unable to guess and with nothing on screen to explain why. A real
+      // refresh disconnects first, which blanks socketId, so it still passes.
+      const seated =
+        player.socketId && player.socketId !== socket.id
+          ? io.sockets.sockets.get(player.socketId)
+          : undefined;
+
+      if (seated?.connected) {
+        socket.emit("seat_taken", {
+          message: "This game is already open in another tab.",
+        });
+
+        console.log(
+          `Refused a second seat for ${player.id} in room ${room.id}`
+        );
+
+        return;
+      }
+
+      // Attach the new socket connection to the existing player.
+      player.socketId = socket.id;
+
+      keepSeat(player);
+
+      // Rejoin the Socket.IO room.
+      socket.join(room.id);
+
+      const opponent = room.players.find(
+        (entry) => entry.id !== player.id
+      );
+
+      // Restore the player's game state. The solution is only included once the
+      // round is over, so it never reaches a client mid-game.
+      socket.emit("room_reconnected", {
+        roomId: room.id,
+        language: room.language,
+        category: room.category,
+        guesses: player.guesses,
+        status: player.status,
+        helpUsage: player.helpUsage,
+        opponentRows: opponent
+          ? opponent.guesses.map((entry) => entry.states)
+          : [],
+        opponentStatus: opponent?.status ?? null,
+        // A multiplayer room past `waiting` with an empty other seat is one the
+        // opponent has left; before that, nobody has taken the seat yet.
+        opponentLeft:
+          room.mode === "multiplayer" &&
+          room.status !== "waiting" &&
+          !opponent,
+        wantsRematch: player.wantsRematch,
+        opponentWantsRematch: opponent?.wantsRematch ?? false,
+        roomStatus: room.status,
+        solution: room.status === "finished" ? room.solution : null,
+      });
+
+      console.log(
+        `Player ${player.id} reconnected to room ${room.id}`
+      );
+    });
+
+    socket.on("create_room", async (payload: CreateRoomPayload) => {
+      const language = payload?.language;
+      const category = payload?.category;
+      const playerId = payload?.playerId;
+      const mode: GameMode =
+        payload?.mode === "solo" ? "solo" : "multiplayer";
+
+      if (!isLanguageCode(language)) {
+        socket.emit("room_error", {
+          message: "Pick a language first",
+        });
+
+        return;
+      }
+
+      if (!isCategoryId(category)) {
+        socket.emit("room_error", {
+          message: "Pick a category first",
+        });
+
+        return;
+      }
+
+      if (!isAvailable(language, category)) {
+        socket.emit("room_error", {
+          message: "That category is not available in this language",
+        });
+
+        return;
+      }
+
+      if (!playerId) {
+        socket.emit("room_error", {
+          message: "Player identity is missing",
+        });
+
+        return;
+      }
+
+      try {
+        const words = getWords(language, category);
+
+        const solution = pickSolution(words);
+
+        const room = createRoom(solution, words, mode, language, category);
+
+        addPlayer(room, playerId, socket.id);
+
+        socket.join(room.id);
+
+        socket.emit("room_created", {
+          roomId: room.id,
+        });
+
+        console.log(
+          `Room created: ${room.id} (${mode}, ${language}/${category})`
+        );
+
+        if (mode === "solo") {
+          room.status = "playing";
+          socket.emit("game_started", {
+            language: room.language,
+            category: room.category,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to create room:", error);
+
+        socket.emit("room_error", {
+          message:
+            error instanceof WordSourceError
+              ? "No words available for that pick — try another category."
+              : "Could not create game",
+        });
+      }
+    });
+
+    socket.on(
+      "join_room",
+      (payload: { roomId: string; playerId: string }) => {
+        const roomId = payload?.roomId ?? "";
+        const playerId = payload?.playerId ?? "";
+        const room = getRoom(roomId.trim());
+
+        if (!room) {
+          socket.emit("room_error", {
+            message: "Room not found",
+          });
+
+          return;
+        }
+
+        if (!playerId) {
+          socket.emit("room_error", {
+            message: "Player identity is missing",
+          });
+
+          return;
+        }
+
+        if (room.status === "finished") {
+          socket.emit("room_error", {
+            message: "That game is already over",
+          });
+
+          return;
+        }
+
+        if (getPlayer(room, playerId)) {
+          socket.emit("room_error", {
+            message: "You are already in this room",
+          });
+
+          return;
+        }
+
+        // Only a room that has never started takes a newcomer. Without this, a
+        // seat freed by someone leaving would let a stranger walk in mid-round
+        // with a full six guesses against a word the others have been working
+        // on. Returning players come through `reconnect_room` instead.
+        if (room.status !== "waiting") {
+          socket.emit("room_error", {
+            message: "That game has already started",
+          });
+
+          return;
+        }
+
+        if (isRoomFull(room)) {
+          socket.emit("room_error", {
+            message: "Room is full",
+          });
+
+          return;
+        }
+
+        addPlayer(room, playerId, socket.id);
+
+        socket.join(room.id);
+
+        room.status = "playing";
+
+        // The joining player never chose a language, so the room reports it.
+        io.to(room.id).emit("game_started", {
+          language: room.language,
+          category: room.category,
+        });
+
+        console.log(`Game started in room ${room.id}`);
+      }
+    );
+
+    socket.on("submit_guess", (payload: SubmitGuessPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room
+        ? getPlayerBySocket(room, socket.id)
+        : undefined;
+
+      if (!room || !player) {
+        socket.emit("room_error", {
+          message: "Room not found",
+        });
+
+        return;
+      }
+
+      if (room.status !== "playing" || player.status !== "playing") {
+        return;
+      }
+
+      const word = (payload?.guess ?? "").trim().toLowerCase();
+
+      if (!isValidGuess(word)) {
+        socket.emit("invalid_guess", {
+          message: `Guess must be ${WORD_LENGTH} letters`,
+        });
+
+        return;
+      }
+
+      player.guesses.push({
+        word,
+        states: getLetterStates(word, room.solution),
+      });
+
+      if (word === room.solution) {
+        player.status = "won";
+      } else if (player.guesses.length >= MAX_GUESSES) {
+        player.status = "lost";
+      }
+
+      socket.emit("guess_result", {
+        guesses: player.guesses,
+        status: player.status,
+      });
+
+      // Opponent only receives colours — never the letters, and never the
+      // player id, which would otherwise be enough to hijack the seat via
+      // reconnect_room.
+      socket.to(room.id).emit("opponent_progress", {
+        rows: player.guesses.map((entry) => entry.states),
+        status: player.status,
+      });
+
+      const winner = room.players.find(
+        (entry) => entry.status === "won"
+      );
+
+      const isRoundOver = room.players.every(
+        (entry) => entry.status !== "playing"
+      );
+
+      if (winner || isRoundOver) {
+        room.status = "finished";
+
+        // Sent per socket rather than to the room. A broadcast would have to
+        // name the winner by player id, and that id is the whole of what
+        // `reconnect_room` asks for before handing over a seat — so the loser
+        // would end every round holding their opponent's credentials.
+        for (const entry of room.players) {
+          if (!entry.socketId) continue;
+
+          io.to(entry.socketId).emit("game_over", {
+            won: entry.status === "won",
+            solution: room.solution,
+          });
+        }
+
+        console.log(`Round finished in room ${room.id}`);
+      }
+    });
+
+    socket.on("request_hint", (payload: RequestHintPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room
+        ? getPlayerBySocket(room, socket.id)
+        : undefined;
+      const hint = payload?.hint;
+
+      if (!room || !player || !hint || !HINT_KINDS.includes(hint)) {
+        return;
+      }
+
+      if (room.status !== "playing" || player.status !== "playing") {
+        return;
+      }
+
+      if (player.helpUsage[hint]) {
+        return;
+      }
+
+      player.helpUsage[hint] = true;
+
+      if (hint === "revealLetter") {
+        const { index, letter } = pickHintLetter(
+          room.solution,
+          player.guesses.map((entry) => entry.word)
+        );
+
+        socket.emit("hint_result", {
+          hint,
+          helpUsage: player.helpUsage,
+          message: `Hint: letter ${index + 1} is "${letter.toUpperCase()}".`,
+        });
+
+        return;
+      }
+
+      if (hint === "suggestWord") {
+        const suggestion = pickSuggestion(
+          room.solution,
+          room.wordPool
+        );
+
+        socket.emit("hint_result", {
+          hint,
+          helpUsage: player.helpUsage,
+          // The word is sent alongside the sentence so the client can drop it
+          // straight into the row instead of parsing it back out of prose.
+          word: suggestion ? suggestion.toUpperCase() : undefined,
+          message: suggestion
+            ? `Try this word: ${suggestion.toUpperCase()}`
+            : "No candidate word found for this hint.",
+        });
+
+        return;
+      }
+
+      socket.emit("hint_result", {
+        hint,
+        helpUsage: player.helpUsage,
+        word: room.solution.toUpperCase(),
+      });
+    });
+
+    socket.on("request_rematch", (payload: RematchPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room ? getPlayerBySocket(room, socket.id) : undefined;
+
+      if (!room || !player) return;
+
+      if (room.mode !== "multiplayer" || room.status !== "finished") return;
+
+      player.wantsRematch = true;
+
+      socket.to(room.id).emit("rematch_requested");
+
+      if (!isRematchReady(room)) return;
+
+      resetRoom(room, pickSolution(room.wordPool, room.solution));
+
+      io.to(room.id).emit("round_started", {
+        language: room.language,
+        category: room.category,
+      });
+
+      console.log(`Rematch started in room ${room.id}`);
+    });
+
+    socket.on("leave_room", (payload: LeaveRoomPayload) => {
+      const room = getRoom((payload?.roomId ?? "").trim());
+      const player = room ? getPlayerBySocket(room, socket.id) : undefined;
+
+      if (!room || !player) return;
+
+      socket.leave(room.id);
+      evictPlayer(io, player.id);
+
+      console.log(`Player ${player.id} left room ${room.id}`);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Player disconnected:", socket.id);
+
+      const result = disconnectPlayer(socket.id);
+
+      if (!result) return;
+
+      const { room, player } = result;
+
+      console.log(
+        `Player ${player.id} disconnected from room ${room.id}`
+      );
+
+      player.leaveTimer = setTimeout(() => {
+        player.leaveTimer = undefined;
+        evictPlayer(io, player.id);
+
+        console.log(`Player ${player.id} gave up their seat in room ${room.id}`);
+      }, RECONNECT_GRACE_MS);
+
+      player.leaveTimer.unref();
+    });
+  });
+}

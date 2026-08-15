@@ -1,73 +1,55 @@
-# React + TypeScript + Vite
+# WORDL · ワードル
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A two-player Wordle you can share by link, dealt from themed word decks and drawn as torn paper.
 
-Currently, two official plugins are available:
+Six guesses at a five-letter word, solo or against someone else in the same room. Create a room, send them the six-character code, and you both race the same word — their board appears next to yours as colours only, never their letters. English or Spanish, with the word drawn from a mixed pool, animals or countries. Refresh mid-game and you land back on the same board.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+An npm-workspaces monorepo: a React 19 client on Vite and Tailwind v4, and a Fastify + Socket.IO server. Rooms live in server memory — no database, no accounts.
 
-## React Compiler
+## How it's put together
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The server owns the word and does the grading. The client sends five letters and gets back coloured tiles; it never scores a guess itself and never sees the solution until the round is over. That's what keeps a shared room honest, and it's why `client/src/hooks/useGame.ts` is mostly socket handlers.
 
-## Expanding the ESLint configuration
+The scoring itself is in [`server/src/game.ts`](server/src/game.ts), and it's two passes: mark exact-position matches first and blank those letters out of both strings, then look for what's left. Do it in one pass and a guess of `creek` against `crave` lights up both `e`s, which is wrong.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Running it
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Needs both workspaces up, in separate terminals:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev:server
 ```
+
+```bash
+npm run dev
+```
+
+The server listens on 3001, Vite serves the client on 5173, and the client talks to `http://localhost:3001` by default. Nothing else to configure — the word API is keyless.
+
+Configuration lives in `server/.env`, which is optional — copy `server/.env.example` to
+start, or skip it and take the defaults. Real environment variables win over the file, so a
+host that injects its own `PORT` needs no change here.
+
+- `PORT` — the port the server listens on. Defaults to 3001. Vite reads `PORT` too, for its
+  own dev server, so keep the backend's copy in `server/.env` rather than exporting it in a
+  shell you also start the client from.
+- `CLIENT_ORIGIN` — CORS allowlist for both Fastify and Socket.IO, comma-separated.
+  Defaults to localhost 5173 and 5174. Add your deployed client origin before going live.
+- `VITE_SERVER_URL` — where the client looks for the server. This one is baked in at build
+  time, so it belongs in `client/.env` or the build environment, not `server/.env`.
+  Defaults to `http://localhost:3001`.
+
+```bash
+npm test    # client suite
+npm run build
+npm run lint
+```
+
+## Known gaps
+
+- The server has no tests. `game.ts` is four pure functions, including the scorer, and none of them are covered — `npm test` runs the client suite only.
+- Rooms are held in memory, so a server restart drops every game in progress. The client detects the stale code and clears it rather than retrying.

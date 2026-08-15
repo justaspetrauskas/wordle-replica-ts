@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local environment config; .env.example is the committed template
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -23,7 +28,10 @@ dist-ssr
 *.sln
 *.sw?
 
-GUIDE.md
+client/GUIDE.md
 .vercel
 .github/copilot-instructions.md
 .github/agents/*
+
+# TypeScript incremental build info
+*.tsbuildinfo
