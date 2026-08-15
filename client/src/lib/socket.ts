@@ -58,7 +58,9 @@ interface ClientToServerEvents {
   reconnect_room: (payload: { roomId: string; playerId: string }) => void;
 }
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ??
+  (import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin);
 
 export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SERVER_URL, {
   autoConnect: false,

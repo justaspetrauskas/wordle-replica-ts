@@ -1,14 +1,18 @@
 import Fastify from "fastify";
 import { Server } from "socket.io";
 import cors from "@fastify/cors";
-import { dirname, join } from "node:path";
+import fastifyStatic from "@fastify/static";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setupSocket } from "./socket.js";
+
+const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
 
 // Resolved from this file rather than the working directory, so `dist/` and
 // `src/` both land on server/.env. Real environment variables win over it,
 // which is what a host that injects PORT needs.
-const ENV_FILE = join(dirname(fileURLToPath(import.meta.url)), "..", ".env");
+const ENV_FILE = join(SERVER_DIR, "..", ".env");
 
 try {
   process.loadEnvFile(ENV_FILE);
@@ -38,11 +42,20 @@ const PORT = readPort();
 
 // Vite picks the first free port from 5173, so both are allowed. Set
 // CLIENT_ORIGIN to override for any other host.
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
-  ? process.env.CLIENT_ORIGIN.split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean)
-  : ["http://localhost:5173", "http://localhost:5174"];
+const CLIENT_ORIGIN = [
+  ...(process.env.CLIENT_ORIGIN
+    ? process.env.CLIENT_ORIGIN.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : ["http://localhost:5173", "http://localhost:5174"]),
+  ...(process.env.RAILWAY_PUBLIC_DOMAIN
+    ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`]
+    : []),
+];
+
+const CLIENT_DIST = process.env.CLIENT_DIST
+  ? resolve(process.env.CLIENT_DIST)
+  : join(SERVER_DIR, "..", "..", "client", "dist");
 
 const app = Fastify({
   logger: true,
@@ -63,6 +76,25 @@ app.get("/api/hello", async () => {
     message: "Hello from the Wordle backend!",
   };
 });
+
+if (existsSync(join(CLIENT_DIST, "index.html"))) {
+  await app.register(fastifyStatic, {
+    root: CLIENT_DIST,
+    prefix: "/",
+  });
+
+  app.setNotFoundHandler((request, reply) => {
+    if (request.method !== "GET" || request.url.startsWith("/api/")) {
+      return reply.status(404).send({ message: "Not found" });
+    }
+
+    return reply.sendFile("index.html");
+  });
+} else {
+  app.log.warn(
+    `No client build at ${CLIENT_DIST} — serving the API only. Run "npm run build" first to serve the client from here.`
+  );
+}
 
 const start = async () => {
   try {
