@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PageShell, TopBar } from '../components/Chrome';
 import { Tooltip } from '../components/Tooltip';
+import { HowToPlay } from '../components/HowToPlay';
 import { useRoom } from '../hooks/useRoom';
 import {
   CATEGORIES,
@@ -99,14 +100,7 @@ export function Setup() {
 
   return (
     <PageShell>
-      <TopBar
-        right={
-          <Tooltip label="How to play">
-            Guess a five-letter word in six tries. Olive is right, ochre is close, navy is out.
-            Together: create a room or join one, then share the code in the top bar.
-          </Tooltip>
-        }
-      />
+      <TopBar right={<HowToPlay />} />
 
       <div className="mt-8 max-w-2xl">
         <div className="flex items-start gap-2">
@@ -116,7 +110,7 @@ export function Setup() {
           </Tooltip>
         </div>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-mute sm:text-base">
-          Five letters, six rows. Set up a game here.
+          One hidden five-letter word, six tries — a whole word per row. Set up a game here.
         </p>
       </div>
 

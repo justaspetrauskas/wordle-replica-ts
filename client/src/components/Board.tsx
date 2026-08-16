@@ -1,16 +1,6 @@
 import type { LetterState, SubmittedGuess } from '../types/game';
 import { MAX_GUESSES, WORD_LENGTH } from '../constants';
-
-/** 'tbd' is a letter the player has typed but not submitted for grading yet. */
-type TileStatus = LetterState | 'tbd';
-
-const PALETTE: Record<TileStatus, string> = {
-  empty: 'bg-transparent border-ink/25 text-ink',
-  tbd: 'bg-transparent border-ink text-ink',
-  correct: 'bg-olive border-olive text-washi',
-  present: 'bg-ochre border-ochre text-ink',
-  absent: 'bg-navy border-navy text-washi/90',
-};
+import { TILE_PALETTE, TILE_STATUS_LABELS, type TileStatus } from '../lib/tiles';
 
 // Hand-cut paper corners: every tile gets a slightly different silhouette so
 // the grid never reads as a table of rectangles.
@@ -37,9 +27,11 @@ function Tile({
 
   return (
     <div
+      role="gridcell"
+      aria-label={`Letter ${delay + 1}: ${letter || 'blank'}, ${TILE_STATUS_LABELS[status]}`}
       className={`flex aspect-square w-full items-center justify-center border-2 font-accent text-xl font-bold sm:text-2xl ${
         SHAPES[delay % SHAPES.length]
-      } ${PALETTE[status]} ${reveal && graded ? 'tile-flip' : ''}`}
+      } ${TILE_PALETTE[status]} ${reveal && graded ? 'tile-flip' : ''}`}
       style={reveal ? { animationDelay: `${delay * 80}ms` } : undefined}
     >
       {letter}
@@ -57,14 +49,31 @@ interface BoardProps {
 export function Board({ guesses, currentGuess, shake }: BoardProps) {
   return (
     <div
-      className={`mx-auto grid w-full max-w-[300px] gap-1.5 sm:max-w-[340px] ${shake ? 'shake' : ''}`}
+      role="grid"
+      aria-label="Guess board, one word per row"
+      className={`mx-auto grid w-full max-w-[300px] gap-y-3 sm:max-w-[340px] ${shake ? 'shake' : ''}`}
     >
       {Array.from({ length: MAX_GUESSES }, (_, row) => {
         const submitted = guesses[row];
         const isCurrentRow = row === guesses.length;
 
         return (
-          <div key={row} className="grid grid-cols-5 gap-1.5">
+          <div
+            key={row}
+            role="row"
+            aria-label={`Guess ${row + 1} of ${MAX_GUESSES}`}
+            className={`relative -mx-2 grid grid-cols-5 gap-1.5 px-2 ${
+              isCurrentRow ? '-my-1 rounded-2xl bg-washi/60 py-1' : ''
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`absolute right-full top-1/2 -translate-y-1/2 pr-0.5 font-accent text-[11px] font-semibold sm:pr-1 ${
+                isCurrentRow ? 'text-coral-ink' : 'text-mute/60'
+              }`}
+            >
+              {row + 1}
+            </span>
             {Array.from({ length: WORD_LENGTH }, (_, column) => {
               if (submitted) {
                 return (

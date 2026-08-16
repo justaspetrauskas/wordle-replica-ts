@@ -13,6 +13,7 @@ import { Board } from './Board';
 import { CategoryWash } from './CategoryWash';
 import { ColorKey, PageShell, TopBar } from './Chrome';
 import { HelpFlash, HelpsBar } from './Helps';
+import { HowToPlay } from './HowToPlay';
 import { Keyboard } from './Keyboard';
 
 export interface GameView {
@@ -94,7 +95,10 @@ export function PlaySurface({
 
   const column = (
     <div>
-      <ColorKey />
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <ColorKey />
+        <HowToPlay />
+      </div>
       <p className="mb-2 mt-2 h-5 text-center text-sm text-coral-ink" role="alert">
         {waiting ? 'Waiting for a second player…' : message}
       </p>
