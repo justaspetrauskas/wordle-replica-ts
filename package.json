@@ -14,5 +14,8 @@
     "start": "npm run start --workspace=server",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "railway": "^3.16.0"
   }
 }
